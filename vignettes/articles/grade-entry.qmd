@@ -1,5 +1,7 @@
 ---
 title: "editable_table"
+execute:
+  eval: false
 format:
   html:
     code-copy: true
