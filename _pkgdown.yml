@@ -20,6 +20,7 @@ reference:
       Load widget dependencies and wire picker bindings inside reactable.
     contents:
       - useReactablePlus
+      - useSchoolHistory
       - popoverDep
       - bindPickersOnRender
 
@@ -54,12 +55,18 @@ reference:
 
   - title: "Raw-Spec Table Module"
     desc: >
-      A lower-level Shiny module driven by `row_spec` and `col_spec`
-      lists. Supports dropdowns, numeric inputs, checkboxes, toggles,
+      A lower-level Shiny module driven by row and column definitions.
+      Supports dropdowns, numeric inputs, checkboxes, toggles,
       date pickers, and text fields with gating, selection, and reset.
+      Use `row_def()`, `display_col()`, and `input_col()` to build
+      validated specifications.
     contents:
       - editable_table_ui
       - editable_table_server
+      - row_def
+      - display_col
+      - input_col
+      - normalize_choices
       - validate_col_spec
       - validate_row_spec
       - validate_row_inputs
@@ -73,6 +80,6 @@ reference:
       Used by the config-driven module's fill-down logic.
     contents:
       - gradeChoices
+      - gradeLabelMap
       - gradeIndex
       - gradeInRange
-

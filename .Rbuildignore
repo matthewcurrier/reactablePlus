@@ -9,3 +9,5 @@
   ^MIGRATION_GUIDE\.md$
   ^vignettes/articles$
   ^R-CMD-check\.yaml$
+^\.positai$
+^\.claude$
