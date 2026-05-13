@@ -12,9 +12,9 @@ schoolPickerInput(
   show_nces_id = TRUE,
   trigger_label = "+ Pick school",
   popover_title = "Find school",
-  search_placeholder = "Search by school name, city, district<U+2026>",
+  search_placeholder = "Search by school name, city, district…",
   empty_hint = "Type 2+ characters to search 100k+ US schools",
-  no_match_hint = "No schools match. Check spelling <U+2014> picking is required.",
+  no_match_hint = "No schools match. Check spelling — picking is required.",
   show_fill_down = TRUE,
   ns = "",
   width = "100\%"

@@ -1,14 +1,13 @@
 ---
 title: "Getting Started with reactablePlus"
+execute:
+  eval: false
+knitr:
+  opts_chunk:
+    collapse: true
+    comment: "#>"
 ---
 
-```{r, include = FALSE}
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>",
-  eval = FALSE
-)
-```
 
 reactablePlus extends [reactable](https://glin.github.io/reactable/) with
 inline editing widgets and two Shiny module layers for building editable
@@ -164,7 +163,7 @@ shinyApp(ui, server)
 library(shiny)
 library(reactablePlus)
 
-mtcars$id <- rownames(mtcars[1:20,])
+mtcars$id <- rownames(mtcars)
 rownames(mtcars) <- NULL
 
 rows <- row_def(
@@ -338,4 +337,3 @@ shinyApp(ui, server)
   behavior.
 - Use `validate_col_spec()` and `validate_row_spec()` to debug
   configuration issues — they produce specific, actionable error messages.
-
