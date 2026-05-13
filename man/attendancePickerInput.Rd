@@ -12,7 +12,7 @@ attendancePickerInput(
   trigger_label = "+ Mark attendance",
   popover_title = "Attendance",
   show_notes = TRUE,
-  notes_placeholder = "Absences, tardies, context for this school year…",
+  notes_placeholder = "Absences, tardies, context for this school year<U+2026>",
   width = "100\%"
 )
 }

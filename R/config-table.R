@@ -18,11 +18,11 @@
 #' Config-driven Editable Table UI
 #'
 #' UI function for the config-driven editable table module. Works with
-#' [table_config()] objects and picker widgets, as opposed to the
+#' `table_config()` objects and picker widgets, as opposed to the
 #' lower-level `editable_table_ui()` which uses raw `row_spec`/`col_spec`
 #' lists.
 #' @param id Module namespace ID.
-#' @param config A [table_config] object.
+#' @param config A `table_config` object.
 #' @return A tagList with dependencies, toolbar, and reactable output.
 #' @export
 config_table_ui <- function(id, config) {
@@ -65,11 +65,11 @@ config_table_ui <- function(id, config) {
 #' Config-driven Editable Table Server
 #'
 #' Server function for the config-driven editable table module. Pairs
-#' with [config_table_ui()]. Uses [table_config()] objects to drive
+#' with `config_table_ui()`. Uses `table_config()` objects to drive
 #' picker widget rendering, state management, and cross-column
 #' interactions.
 #' @param id Module namespace ID.
-#' @param config A [table_config] object.
+#' @param config A `table_config` object.
 #' @param data_r Reactive returning `NULL` (new/add mode) or a data frame
 #'   (edit mode with saved rows).
 #' @param search_fn A function `(query, limit)` → data.frame for

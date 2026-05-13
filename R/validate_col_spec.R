@@ -5,17 +5,23 @@
 #' Checks that a col_spec is well-formed before any rendering or data
 #' manipulation occurs. Throws an informative error on the first problem found.
 #'
+#' Dropdown choices are normalized before validation: unnamed character
+#' vectors, named character vectors, and list-of-lists are all accepted.
+#' See `normalize_choices()` for details.
+#'
 #' @param col_spec A non-empty list of column definition lists. Each entry must
 #'   contain \code{col_name} (string), \code{label} (string), and \code{type}
-#'   (one of \code{"dropdown"} or \code{"numeric"}). Dropdown entries also
-#'   require \code{choices} (a list of lists, each with \code{label} and
-#'   \code{value}, all values of the same type). Numeric entries also require
-#'   \code{min} (numeric).
+#'   (one of \code{"dropdown"}, \code{"numeric"}, \code{"date"},
+#'   \code{"checkbox"}, \code{"toggle"}, or \code{"text"}). Dropdown entries
+#'   also require \code{choices} — a character vector, named character vector,
+#'   or list of lists (each with \code{label} and \code{value}).
+#'   Numeric entries also require \code{min} (numeric).
 #' @param row_spec A validated row_spec list, or \code{NULL}. Required when any
 #'   \code{gate} condition uses \code{type = "selected"}, which requires
 #'   \code{row_spec$selectable == TRUE}.
 #'
-#' @return Called for its side-effect. Returns invisibly on success.
+#' @return The validated (and normalized) col_spec, returned invisibly.
+#'   Dropdown choices are guaranteed to be in list-of-lists form.
 #' @export
 validate_col_spec <- function(col_spec, row_spec = NULL) {
   supported_types <- c(
@@ -49,6 +55,15 @@ validate_col_spec <- function(col_spec, row_spec = NULL) {
       call. = FALSE
     )
   }
+
+  # ── Normalize dropdown choices ─────────────────────────────────────────────
+
+  col_spec <- purrr::map(col_spec, function(entry) {
+    if (identical(entry$type, "dropdown") && !is.null(entry$choices)) {
+      entry$choices <- normalize_choices(entry$choices)
+    }
+    entry
+  })
 
   # ── Per-entry validation ──────────────────────────────────────────────────────
 
@@ -130,6 +145,86 @@ validate_col_spec <- function(col_spec, row_spec = NULL) {
   invisible(col_spec)
 }
 
+
+#' Normalize dropdown choices to list-of-lists format
+#'
+#' Converts shorthand choice formats into the canonical list-of-lists
+#' structure expected by `validate_col_spec()` and the cell renderers.
+#' Called automatically during validation, but can also be used directly.
+#'
+#' Three formats are accepted:
+#' \describe{
+#'   \item{Unnamed character vector}{`c("High", "Medium", "Low")` —
+#'     label and value are identical.}
+#'   \item{Named character vector}{`c("High" = "high", "Medium" = "med")` —
+#'     names become labels, values become values.}
+#'   \item{List of lists}{`list(list(label = "High", value = "high"), ...)` —
+#'     canonical format, returned as-is.}
+#' }
+#'
+#' @param choices A character vector, named character vector, or list of
+#'   lists. Empty strings and `NA` values in character vectors are rejected.
+#'
+#' @return A list of lists, each with `label` (character) and `value`.
+#'
+#' @examples
+#' # Unnamed vector — label == value
+#' normalize_choices(c("High", "Medium", "Low"))
+#'
+#' # Named vector — names are labels
+#' normalize_choices(c("High" = "high", "Medium" = "med", "Low" = "low"))
+#'
+#' # Already canonical — returned as-is
+#' normalize_choices(list(
+#'   list(label = "Good", value = 3),
+#'   list(label = "Bad",  value = 1)
+#' ))
+#'
+#' @export
+normalize_choices <- function(choices) {
+  if (is.character(choices)) {
+    if (length(choices) == 0L) {
+      stop("choices must contain at least one entry.", call. = FALSE)
+    }
+    if (any(is.na(choices))) {
+      stop("choices must not contain NA values.", call. = FALSE)
+    }
+    if (any(nchar(choices) == 0L)) {
+      stop(
+        "choices must not contain empty strings. ",
+        "Each choice needs a non-empty label.",
+        call. = FALSE
+      )
+    }
+
+    nms <- names(choices)
+    if (is.null(nms)) {
+      # Unnamed vector: label == value
+      purrr::map(unname(choices), \(x) list(label = x, value = x))
+    } else {
+      # Named vector: names are labels, values are values
+      if (any(nchar(nms) == 0L)) {
+        stop(
+          "Named choice vectors must not have empty names. ",
+          "Every element needs a non-empty name as its label.",
+          call. = FALSE
+        )
+      }
+      purrr::imap(choices, \(val, lab) list(label = lab, value = val)) |>
+        unname()
+    }
+  } else if (is.list(choices)) {
+    choices
+  } else {
+    stop(
+      "choices must be a character vector, named character vector, ",
+      "or list of lists (each with 'label' and 'value').",
+      call. = FALSE
+    )
+  }
+}
+
+
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
 #' @noRd
@@ -147,8 +242,8 @@ validate_dropdown_entry <- function(entry, i) {
     stop(
       "col_spec[[",
       i,
-      "]]$choices must be a list of lists. ",
-      "Plain character vectors are not accepted.",
+      "]]$choices must be a character vector, named character vector, ",
+      "or list of lists (each with 'label' and 'value').",
       call. = FALSE
     )
   }

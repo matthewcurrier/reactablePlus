@@ -12,9 +12,9 @@ schoolPickerInput(
   show_nces_id = TRUE,
   trigger_label = "+ Pick school",
   popover_title = "Find school",
-  search_placeholder = "Search by school name, city, district…",
+  search_placeholder = "Search by school name, city, district<U+2026>",
   empty_hint = "Type 2+ characters to search 100k+ US schools",
-  no_match_hint = "No schools match. Check spelling — picking is required.",
+  no_match_hint = "No schools match. Check spelling <U+2014> picking is required.",
   show_fill_down = TRUE,
   ns = "",
   width = "100\%"
@@ -70,7 +70,7 @@ links (change, fill down, clear).
 }
 \details{
 Search is server-side: the widget sends queries to R via
-\verb{input$<ns>school_search}; use \code{\link[=useSchoolSearch]{useSchoolSearch()}} in your server function
+\verb{input$<ns>school_search}; use \code{useSchoolSearch()} in your server function
 to wire up the response.
 
 Trigger and popover labels are configurable so the widget can be reused

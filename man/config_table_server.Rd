@@ -14,7 +14,7 @@ config_table_server(
 \arguments{
 \item{id}{Module namespace ID.}
 
-\item{config}{A \link{table_config} object.}
+\item{config}{A \code{table_config} object.}
 
 \item{data_r}{Reactive returning \code{NULL} (new/add mode) or a data frame
 (edit mode with saved rows).}
@@ -28,7 +28,7 @@ server-side typeahead search. Required when any column uses
 }
 \description{
 Server function for the config-driven editable table module. Pairs
-with \code{\link[=config_table_ui]{config_table_ui()}}. Uses \code{\link[=table_config]{table_config()}} objects to drive
+with \code{config_table_ui()}. Uses \code{table_config()} objects to drive
 picker widget rendering, state management, and cross-column
 interactions.
 }

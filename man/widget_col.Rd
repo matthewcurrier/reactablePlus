@@ -56,7 +56,7 @@ type-appropriate validation.}
 A \code{widget_col} list (S3 class \code{"widget_col"}).
 }
 \description{
-Defines a single column in a \code{\link[=table_config]{table_config()}}. Each widget column
+Defines a single column in a \code{table_config()}. Each widget column
 maps to a picker widget type (\code{school_picker}, \code{attendance_picker},
 \code{homeschool_picker}, \code{notes_input}, or \code{custom}) and carries
 widget-specific options.

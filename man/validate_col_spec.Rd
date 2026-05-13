@@ -9,19 +9,26 @@ validate_col_spec(col_spec, row_spec = NULL)
 \arguments{
 \item{col_spec}{A non-empty list of column definition lists. Each entry must
 contain \code{col_name} (string), \code{label} (string), and \code{type}
-(one of \code{"dropdown"} or \code{"numeric"}). Dropdown entries also
-require \code{choices} (a list of lists, each with \code{label} and
-\code{value}, all values of the same type). Numeric entries also require
-\code{min} (numeric).}
+(one of \code{"dropdown"}, \code{"numeric"}, \code{"date"},
+\code{"checkbox"}, \code{"toggle"}, or \code{"text"}). Dropdown entries
+also require \code{choices} — a character vector, named character vector,
+or list of lists (each with \code{label} and \code{value}).
+Numeric entries also require \code{min} (numeric).}
 
 \item{row_spec}{A validated row_spec list, or \code{NULL}. Required when any
 \code{gate} condition uses \code{type = "selected"}, which requires
 \code{row_spec$selectable == TRUE}.}
 }
 \value{
-Called for its side-effect. Returns invisibly on success.
+The validated (and normalized) col_spec, returned invisibly.
+Dropdown choices are guaranteed to be in list-of-lists form.
 }
 \description{
 Checks that a col_spec is well-formed before any rendering or data
 manipulation occurs. Throws an informative error on the first problem found.
+}
+\details{
+Dropdown choices are normalized before validation: unnamed character
+vectors, named character vectors, and list-of-lists are all accepted.
+See \code{normalize_choices()} for details.
 }

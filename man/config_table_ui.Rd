@@ -9,14 +9,14 @@ config_table_ui(id, config)
 \arguments{
 \item{id}{Module namespace ID.}
 
-\item{config}{A \link{table_config} object.}
+\item{config}{A \code{table_config} object.}
 }
 \value{
 A tagList with dependencies, toolbar, and reactable output.
 }
 \description{
 UI function for the config-driven editable table module. Works with
-\code{\link[=table_config]{table_config()}} objects and picker widgets, as opposed to the
+\code{table_config()} objects and picker widgets, as opposed to the
 lower-level \code{editable_table_ui()} which uses raw \code{row_spec}/\code{col_spec}
 lists.
 }

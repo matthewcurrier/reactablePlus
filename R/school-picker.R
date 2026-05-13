@@ -6,7 +6,7 @@
 #' links (change, fill down, clear).
 #'
 #' Search is server-side: the widget sends queries to R via
-#' `input$<ns>school_search`; use [useSchoolSearch()] in your server function
+#' `input$<ns>school_search`; use `useSchoolSearch()` in your server function
 #' to wire up the response.
 #'
 #' Trigger and popover labels are configurable so the widget can be reused

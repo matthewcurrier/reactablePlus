@@ -25,7 +25,7 @@ table_config(
 \item{row_labels}{Character vector of display labels (same length as
 \code{row_keys}).}
 
-\item{columns}{List of column specs built with \code{\link[=widget_col]{widget_col()}}.}
+\item{columns}{List of column specs built with \code{widget_col()}.}
 
 \item{gear_toggles}{Named list of toggle definitions for
 \code{gearPopoverInput()}. Pass \code{NULL} for no gear icon.}
@@ -60,7 +60,7 @@ A \code{table_config} list (S3 class \code{"table_config"}).
 }
 \description{
 Creates a declarative configuration object that drives
-\code{\link[=config_table_ui]{config_table_ui()}} / \code{\link[=config_table_server]{config_table_server()}}. The config describes
+\code{config_table_ui()} / \code{config_table_server()}. The config describes
 which rows and columns appear, which picker widget each column uses,
 and how cross-column interactions (mutual exclusion, fill-down) work.
 }

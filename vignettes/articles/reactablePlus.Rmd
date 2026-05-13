@@ -18,7 +18,7 @@ tables. This article walks through the key concepts.
 
 ```{r}
 # install.packages("pak")
-pak::pak("OWNER/reactablePlus")
+pak::pak("matthewcurrier/reactablePlus")
 ```
 
 ## Two ways to build editable tables
@@ -28,27 +28,43 @@ case.
 
 ### 1. Raw-spec module (maximum flexibility)
 
-The lower-level module accepts plain lists describing rows and columns. You
-control every column type (dropdown, numeric, checkbox, toggle, date, text)
-and can wire gating, selection, and reset behavior.
+The lower-level module accepts declarative row and column definitions.
+You control every column type (dropdown, numeric, checkbox, toggle, date,
+text) and can wire gating, selection, and reset behavior.
+
+Use constructor functions — `row_def()`, `display_col()`, and `input_col()`
+— to build validated specifications. They catch configuration errors at
+creation time instead of at render time.
 
 ```{r}
 library(shiny)
 library(reactablePlus)
 
-row_spec <- list(
-  id_col   = "id",
-  id_vals  = c("row1", "row2", "row3"),
-  labels   = c("Alice", "Bob", "Carol"),
-  selected = rep(TRUE, 3)
+# The data frame drives the rows — must contain the id column
+# and any display columns declared in the row definition.
+my_data <- data.frame(
+  id   = c("row1", "row2", "row3"),
+  name = c("Alice", "Bob", "Carol")
 )
 
-col_spec <- list(
-  list(col_name = "role",  type = "dropdown",
-       choices = c("Analyst", "Engineer", "Manager")),
-  list(col_name = "score", type = "numeric",
-       min = 0, max = 100, step = 1),
-  list(col_name = "active", type = "checkbox")
+rows <- row_def(
+  id_col = "id",
+  display_cols = list(
+    display_col("name", "Name")
+  )
+)
+
+cols <- list(
+  # Simplest form — label == value
+  input_col("role", "Role", "dropdown",
+            choices = c("Analyst", "Engineer", "Manager")),
+
+  # Named vector — display labels differ from stored values
+  input_col("status", "Status", "dropdown",
+            choices = c("Active" = "active", "On Leave" = "leave")),
+
+  input_col("score", "Score", "numeric", min = 0, max = 100, step = 1),
+  input_col("active", "Active", "checkbox")
 )
 
 ui <- fluidPage(
@@ -58,17 +74,23 @@ ui <- fluidPage(
 server <- function(input, output, session) {
   editable_table_server(
     "demo",
-    data_r     = reactive(NULL),
-    row_spec   = row_spec,
-    col_spec   = col_spec
+    data_r   = reactive(my_data),
+    row_spec = rows,
+    col_spec = cols
   )
 }
 
 shinyApp(ui, server)
 ```
 
-Use `validate_col_spec()` and `validate_row_spec()` to catch configuration
-errors before the app launches.
+Dropdown choices accept three formats: a plain character vector
+(`c("High", "Medium", "Low")`), a named character vector where names
+become labels (`c("High" = "high")`), or the full list-of-lists form
+when you need non-character values like `list(label = "Good", value = 3)`.
+All three are normalized internally via `normalize_choices()`.
+
+Plain lists are still accepted for backward compatibility — the
+constructors are the recommended approach for new code.
 
 ### 2. Config-driven module (widget-powered)
 

@@ -11,13 +11,14 @@ Extends 'reactable' with inline editing widgets (pickers, popovers, text inputs)
 \seealso{
 Useful links:
 \itemize{
-  \item \url{https://github.com/OWNER/reactablePlus}
-  \item Report bugs at \url{https://github.com/OWNER/reactablePlus/issues}
+  \item \url{https://github.com/matthewcurrier/reactablePlus}
+  \item \url{https://matthewcurrier.github.io/reactablePlus/}
+  \item Report bugs at \url{https://github.com/matthewcurrier/reactablePlus/issues}
 }
 
 }
 \author{
-\strong{Maintainer}: First Last \email{first.last@example.com}
+\strong{Maintainer}: Matthew Currier \email{first.last@example.com}
 
 }
 \keyword{internal}

@@ -16,7 +16,7 @@ homeschoolPickerInput(
   curriculum_placeholder = "e.g. Time4Learning, Sonlight, custom",
   show_curriculum = TRUE,
   show_notes = TRUE,
-  notes_placeholder = "Evaluator, co-op participation, any context…",
+  notes_placeholder = "Evaluator, co-op participation, any context<U+2026>",
   trigger_label = "+ Mark homeschool",
   trigger_sub_label = "(details optional)",
   popover_title = "Homeschool details",

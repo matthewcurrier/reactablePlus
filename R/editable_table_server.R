@@ -38,7 +38,7 @@ editable_table_server <- function(
   reactable_options = list()
 ) {
   validate_row_spec(row_spec)
-  validate_col_spec(col_spec, row_spec)
+  col_spec <- validate_col_spec(col_spec, row_spec)
 
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns

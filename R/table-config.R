@@ -12,17 +12,18 @@
 #   - how to marshal data in/out (from saved DB rows -> state, state -> output)
 # =============================================================================
 
+
 #' Build a table configuration
 #'
 #' Creates a declarative configuration object that drives
-#' [config_table_ui()] / [config_table_server()]. The config describes
+#' `config_table_ui()` / `config_table_server()`. The config describes
 #' which rows and columns appear, which picker widget each column uses,
 #' and how cross-column interactions (mutual exclusion, fill-down) work.
 #'
 #' @param row_keys Character vector of row identifiers (e.g. grade keys).
 #' @param row_labels Character vector of display labels (same length as
 #'   `row_keys`).
-#' @param columns List of column specs built with [widget_col()].
+#' @param columns List of column specs built with `widget_col()`.
 #' @param gear_toggles Named list of toggle definitions for
 #'   `gearPopoverInput()`. Pass `NULL` for no gear icon.
 #' @param interactions List with optional `mutual_exclusion` and
@@ -68,20 +69,19 @@
 #' }
 #'
 #' @export
-table_config <- function(
-  row_keys,
-  row_labels,
-  columns,
-  gear_toggles = NULL,
-  interactions = list(),
-  from_saved_fn = NULL,
-  to_output_fn = NULL,
-  toolbar_stats_fn = NULL,
-  search_fn_col = NULL,
-  badge_col = "grade",
-  year_col = "school_year",
-  year_range = c(1990L, 2050L)
-) {
+table_config <- function(row_keys,
+                         row_labels,
+                         columns,
+                         gear_toggles    = NULL,
+                         interactions    = list(),
+                         from_saved_fn   = NULL,
+                         to_output_fn    = NULL,
+                         toolbar_stats_fn = NULL,
+                         search_fn_col   = NULL,
+                         badge_col       = "grade",
+                         year_col        = "school_year",
+                         year_range      = c(1990L, 2050L)) {
+
   stopifnot(
     is.character(row_keys),
     is.character(row_labels),
@@ -93,19 +93,19 @@ table_config <- function(
 
   structure(
     list(
-      row_keys = row_keys,
-      row_labels = row_labels,
-      label_map = label_map,
-      columns = columns,
-      gear_toggles = gear_toggles,
-      interactions = interactions,
-      from_saved_fn = from_saved_fn,
-      to_output_fn = to_output_fn,
+      row_keys         = row_keys,
+      row_labels       = row_labels,
+      label_map        = label_map,
+      columns          = columns,
+      gear_toggles     = gear_toggles,
+      interactions     = interactions,
+      from_saved_fn    = from_saved_fn,
+      to_output_fn     = to_output_fn,
       toolbar_stats_fn = toolbar_stats_fn,
-      search_fn_col = search_fn_col,
-      badge_col = badge_col,
-      year_col = year_col,
-      year_range = year_range
+      search_fn_col    = search_fn_col,
+      badge_col        = badge_col,
+      year_col         = year_col,
+      year_range       = year_range
     ),
     class = "table_config"
   )
@@ -114,7 +114,7 @@ table_config <- function(
 
 #' Build a widget column specification
 #'
-#' Defines a single column in a [table_config()]. Each widget column
+#' Defines a single column in a `table_config()`. Each widget column
 #' maps to a picker widget type (`school_picker`, `attendance_picker`,
 #' `homeschool_picker`, `notes_input`, or `custom`) and carries
 #' widget-specific options.
@@ -145,35 +145,34 @@ table_config <- function(
 #'
 #' @return A `widget_col` list (S3 class `"widget_col"`).
 #' @export
-widget_col <- function(
-  id,
-  type,
-  label,
-  width = NULL,
-  min_width = NULL,
-  options = list(),
-  gear_toggle = NULL,
-  triggers_rerender = FALSE,
-  empty_value = NULL,
-  render_cell_fn = NULL,
-  validate_fn = NULL
-) {
+widget_col <- function(id,
+                       type,
+                       label,
+                       width        = NULL,
+                       min_width    = NULL,
+                       options      = list(),
+                       gear_toggle  = NULL,
+                       triggers_rerender = FALSE,
+                       empty_value  = NULL,
+                       render_cell_fn = NULL,
+                       validate_fn    = NULL) {
+
   stopifnot(is.character(id), length(id) == 1L)
   stopifnot(is.character(type), length(type) == 1L)
 
   structure(
     list(
-      id = id,
-      type = type,
-      label = label,
-      width = width,
-      min_width = min_width,
-      options = options,
-      gear_toggle = gear_toggle,
+      id                = id,
+      type              = type,
+      label             = label,
+      width             = width,
+      min_width         = min_width,
+      options           = options,
+      gear_toggle       = gear_toggle,
       triggers_rerender = triggers_rerender,
-      empty_value = empty_value,
-      render_cell_fn = render_cell_fn,
-      validate_fn = validate_fn
+      empty_value       = empty_value,
+      render_cell_fn    = render_cell_fn,
+      validate_fn       = validate_fn
     ),
     class = "widget_col"
   )
