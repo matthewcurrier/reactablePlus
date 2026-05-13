@@ -12,6 +12,7 @@ navbar:
     github:
       icon: fa-github
       href: https://github.com/matthewcurrier/reactablePlus/
+      aria-label: GitHub
 
 reference:
   - title: "Setup"
@@ -75,7 +76,3 @@ reference:
       - gradeIndex
       - gradeInRange
 
-articles:
-  - title: "Get Started"
-    contents:
-      - reactablePlus
