@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Building a Grade Entry System with editable_table</title>
+<title>editable_table</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -84,7 +84,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Building a Grade Entry System with editable_table</h1>
+<h1 class="title">editable_table</h1>
 </div>
 
 
@@ -101,25 +101,25 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
+<p>The <code>editable_table_server()</code> and <code>editable_table_ui()</code> module functions are designed to assist with uploading data user entry data to databases.</p>
+<p>The <code>editable_table_ui()</code> function returns a list of shiny tags:</p>
+<ul>
+<li><strong>table</strong> - A reactable table for the user to interact with</li>
+<li><strong>reset_button</strong> - A reset button</li>
+<li><strong>data_display</strong> - A table showing the output of the user selections</li>
+</ul>
+<p>The <code>data_display</code> table can be used as a diagnostic for troubleshooting the module, or sending the user feedback.</p>
 <p>This article walks through a practical use case for the raw-spec editable table module: a student grade entry form backed by a SQLite database. We’ll start with the table itself, then add persistence.</p>
+<p>The <code>editable_table_server()</code> returns a named list with two reactives:</p>
+<ul>
+<li>__current_data - This is a tibble of the data the user has selected. It includes an id_col along with whatever values the user has selected.</li>
+<li><strong>selected_ids</strong> - This is a vector of id_col values that have been selected by the user. When a row is NOT selectable, it returns NULL. This return item can be used when you only need a list of the values selected.</li>
+</ul>
 <section id="the-table" class="level2">
 <h2 class="anchored" data-anchor-id="the-table">The table</h2>
 <p>We want a table where a teacher can see each student-course pair, pick a letter grade from a dropdown, and optionally add notes. Three students, two courses, six rows.</p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(shiny)</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(reactablePlus)</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>roster <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">row_id       =</span> <span class="fu">c</span>(<span class="st">"s1_c1"</span>, <span class="st">"s1_c2"</span>, <span class="st">"s2_c1"</span>, <span class="st">"s2_c2"</span>, <span class="st">"s3_c1"</span>, <span class="st">"s3_c2"</span>),</span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">student_name =</span> <span class="fu">c</span>(<span class="st">"Amara Johnson"</span>, <span class="st">"Amara Johnson"</span>,</span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>                   <span class="st">"Ben Martinez"</span>,  <span class="st">"Ben Martinez"</span>,</span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>                   <span class="st">"Clara Chen"</span>,    <span class="st">"Clara Chen"</span>),</span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">class_name   =</span> <span class="fu">c</span>(<span class="st">"Geometry"</span>, <span class="st">"Literature"</span>,</span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>                   <span class="st">"Geometry"</span>, <span class="st">"Literature"</span>,</span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>                   <span class="st">"Geometry"</span>, <span class="st">"Literature"</span>),</span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>  <span class="at">student_id   =</span> <span class="fu">c</span>(<span class="dv">1</span>L, <span class="dv">1</span>L, <span class="dv">2</span>L, <span class="dv">2</span>L, <span class="dv">3</span>L, <span class="dv">3</span>L),</span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>  <span class="at">class_id     =</span> <span class="fu">c</span>(<span class="dv">1</span>L, <span class="dv">2</span>L, <span class="dv">1</span>L, <span class="dv">2</span>L, <span class="dv">1</span>L, <span class="dv">2</span>L)</span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">glimpse</span>(roster)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>The <code>row_id</code> column uniquely identifies each row. <code>student_name</code> and <code>class_name</code> are display-only. <code>student_id</code> and <code>class_id</code> travel along silently — we’ll need them later for saving.</p>
 <p>Now define the table layout with the constructor functions.</p>

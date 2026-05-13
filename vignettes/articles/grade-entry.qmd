@@ -1,5 +1,5 @@
 ---
-title: "Building a Grade Entry System with editable_table"
+title: "editable_table"
 execute:
   eval: false
 knitr:
@@ -8,11 +8,27 @@ knitr:
     comment: "#>"
 ---
 
+The `editable_table_server()` and `editable_table_ui()` module functions are designed to assist with uploading data user entry data to databases. 
+
+
+The `editable_table_ui()` function returns a list of shiny tags: 
+
+*  __table__ - A reactable table for the user to interact with
+*  __reset_button__ - A reset button
+*  __data_display__ - A table showing the output of the user selections
+
+The `data_display` table can be used as a diagnostic for troubleshooting the module, or sending the user feedback.
+
 
 This article walks through a practical use case for the raw-spec
 editable table module: a student grade entry form backed by a SQLite
 database. We'll start with the table itself, then add persistence.
 
+
+The `editable_table_server()` returns a named list with two reactives:
+
+*  __current_data - This is a tibble of the data the user has selected. It includes an id_col along with whatever values the user has selected.
+*  __selected_ids__ - This is a vector of id_col values that have been selected by the user. When a row is NOT selectable, it returns NULL. This return item can be used when you only need a list of the values selected.
 
 ## The table
 
@@ -21,6 +37,11 @@ pick a letter grade from a dropdown, and optionally add notes. Three
 students, two courses, six rows.
 
 ```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| code-fold: true
+
 library(shiny)
 library(reactablePlus)
 
@@ -36,6 +57,11 @@ roster <- data.frame(
   class_id     = c(1L, 2L, 1L, 2L, 1L, 2L)
 )
 ```
+```{r print-roster}
+glimpse(roster)
+```
+
+
 
 The `row_id` column uniquely identifies each row. `student_name` and
 `class_name` are display-only. `student_id` and `class_id` travel
