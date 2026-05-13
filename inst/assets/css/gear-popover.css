@@ -1,0 +1,144 @@
+/* gear-popover.css
+ * Gear settings button + popover with toggle switches.
+ * ------------------------------------------------------------------ */
+
+.sh-gear-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+/* ── Gear button ───────────────────────────────────────────────────── */
+
+.gear-btn {
+  appearance: none;
+  border: 1px solid var(--sh-border);
+  background: var(--sh-surface);
+  width: 34px;
+  height: 34px;
+  border-radius: var(--sh-radius);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--sh-text-muted);
+  cursor: default;
+  transition: all 0.12s ease;
+}
+.gear-btn:hover,
+.gear-btn.is-on {
+  color: var(--sh-teal);
+  border-color: var(--sh-teal);
+  background: var(--sh-teal-soft);
+}
+.gear-btn:focus-visible {
+  outline: 2px solid var(--sh-teal);
+  outline-offset: 2px;
+}
+.gear-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* ── Gear popover ──────────────────────────────────────────────────── */
+
+.gear-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 9999;
+  width: 320px;
+  background: var(--sh-surface);
+  border: 1px solid var(--sh-border);
+  border-radius: var(--sh-radius);
+  box-shadow: var(--sh-shadow-md);
+  overflow: hidden;
+}
+
+/* ── Section header ────────────────────────────────────────────────── */
+
+.gear-popover-hd {
+  padding: 12px 14px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--sh-text);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--sh-border);
+  background: var(--sh-row-stripe);
+}
+
+/* ── Toggle rows ───────────────────────────────────────────────────── */
+
+.gear-options {
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gear-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border-radius: var(--sh-radius, 4px);
+  cursor: default;
+}
+.gear-toggle:hover {
+  background: var(--sh-row-hover);
+}
+
+.gear-toggle-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.gear-opt-title {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--sh-text);
+}
+.gear-opt-desc {
+  font-size: 12px;
+  color: var(--sh-text-muted);
+  margin-top: 1px;
+}
+
+/* ── Toggle switch ─────────────────────────────────────────────────── */
+
+.gear-switch {
+  position: relative;
+  flex: 0 0 auto;
+  cursor: default;
+}
+.gear-switch input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.gear-switch > span {
+  display: inline-block;
+  width: 32px;
+  height: 18px;
+  background: #cbd2da;
+  border-radius: 999px;
+  position: relative;
+  transition: background 0.15s ease;
+}
+.gear-switch > span::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s ease;
+}
+.gear-switch.is-on > span {
+  background: var(--sh-teal);
+}
+.gear-switch.is-on > span::after {
+  transform: translateX(14px);
+}

@@ -1,0 +1,37 @@
+Package: reactablePlus
+Title: Enhanced Interactive Tables with Inline Editors for Shiny
+Version: 0.1.0
+Authors@R:
+    person("First", "Last", email = "first.last@example.com",
+           role = c("aut", "cre"))
+Description: Extends 'reactable' with inline editing widgets (pickers,
+    popovers, text inputs) and a declarative configuration layer for
+    building editable tables in Shiny applications. Provides a generic
+    editable table module driven by row and column specifications, plus
+    a library of cell-level input widgets with custom Shiny bindings.
+License: MIT + file LICENSE
+URL: https://github.com/OWNER/reactablePlus,
+    https://OWNER.github.io/reactablePlus/
+BugReports: https://github.com/OWNER/reactablePlus/issues
+Depends:
+    R (>= 4.1.0)
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Imports:
+    bslib,
+    dplyr,
+    htmltools,
+    htmlwidgets,
+    jsonlite,
+    purrr,
+    reactable,
+    rlang,
+    shiny,
+    stats,
+    tibble
+Suggests:
+    pkgdown,
+    shinytest2,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3

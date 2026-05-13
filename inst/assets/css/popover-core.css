@@ -1,0 +1,347 @@
+/* popover-core.css
+ * Design tokens + shared component styles for schoolhistory pickers.
+ * Tokens lifted from the prototype's styles.css (canonical).
+ * ------------------------------------------------------------------ */
+
+/* ── Tokens ────────────────────────────────────────────────────────── */
+
+:root {
+  --sh-bg:            #f5f6f8;
+  --sh-surface:       #ffffff;
+  --sh-row-stripe:    #fafbfc;
+  --sh-row-hover:     #f4f7f7;
+  --sh-border:        #d8dde3;
+  --sh-border-strong: #b9c0c8;
+  --sh-text:          #1f2328;
+  --sh-text-muted:    #5b6470;
+  --sh-text-soft:     #8a93a0;
+
+  --sh-teal:          #1f7a7a;
+  --sh-teal-deep:     #155b5b;
+  --sh-teal-soft:     #e3f0f0;
+
+  --sh-danger:        #b54040;
+  --sh-warn:          #d97706;
+
+  --sh-shadow-sm:     0 1px 2px rgba(15, 23, 42, 0.05);
+  --sh-shadow-md:     0 8px 24px rgba(15, 23, 42, 0.10),
+                      0 2px 6px rgba(15, 23, 42, 0.06);
+  --sh-focus:         0 0 0 3px rgba(31, 122, 122, 0.20);
+  --sh-radius:        4px;
+  --sh-radius-sm:     3px;
+}
+
+/* ── Popover container ─────────────────────────────────────────────── */
+
+.pv-container {
+  position: relative;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+               "Helvetica Neue", Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--sh-text);
+}
+
+/* ── Pick-trigger button (empty state) ─────────────────────────────── */
+
+.pick-trigger {
+  appearance: none;
+  border: 1px dashed var(--sh-border-strong);
+  background: transparent;
+  padding: 8px 14px;
+  border-radius: var(--sh-radius);
+  font-size: 13.5px;
+  color: var(--sh-text-muted);
+  cursor: default;
+  transition: all 0.12s ease;
+  line-height: 1.4;
+}
+.pick-trigger:hover,
+.pick-trigger:focus-visible {
+  border-color: var(--sh-teal);
+  color: var(--sh-teal);
+  background: var(--sh-teal-soft);
+  border-style: solid;
+}
+.pick-trigger:focus-visible {
+  outline: 2px solid var(--sh-teal);
+  outline-offset: 2px;
+}
+.pick-trigger-sub {
+  font-size: 11.5px;
+  color: var(--sh-text-soft);
+  font-weight: 400;
+  margin-left: 2px;
+}
+
+/* ── Filled-state summary ──────────────────────────────────────────── */
+
+.pv-summary {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 4px 0;
+  cursor: default;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+}
+.pv-summary:focus-visible {
+  outline: 2px solid var(--sh-teal);
+  outline-offset: 2px;
+  border-radius: var(--sh-radius-sm);
+}
+
+/* ── Pill (used in attendance + homeschool summaries) ──────────────── */
+
+.attend-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--sh-bg);
+  color: var(--sh-text);
+  border: 1px solid var(--sh-border);
+  line-height: 1.4;
+}
+.attend-pill.p-excellent    { background: #dcf2e2; color: #1f6b3a; border-color: #b6e0c2; }
+.attend-pill.p-good         { background: var(--sh-teal-soft); color: var(--sh-teal-deep); border-color: #b8d8d8; }
+.attend-pill.p-satisfactory { background: #fff3d6; color: #92691a; border-color: #f0d99b; }
+.attend-pill.p-poor         { background: #fde2e0; color: #9b2c20; border-color: #f0bdb8; }
+.attend-pill.class          { font-weight: 500; }
+
+/* Homeschool pills */
+.attend-pill.hs-pill    { background: rgba(217,119,6,0.12); color: var(--sh-warn); border-color: rgba(217,119,6,0.3); }
+.attend-pill.hs-by-pill { background: var(--sh-bg); color: var(--sh-text-muted); border-color: var(--sh-border); }
+
+.pill-icon { flex: 0 0 auto; opacity: 0.85; }
+
+.attend-line { display: flex; flex-wrap: wrap; gap: 4px; }
+.attend-sub  { font-size: 12px; color: var(--sh-text-muted); }
+
+/* ── Picker overlay + popover ──────────────────────────────────────── */
+
+.picker-overlay.picker-portal {
+  position: fixed;
+  z-index: 9999;
+}
+.picker-overlay {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 60;
+  width: min(420px, 90vw);
+}
+.picker {
+  background: var(--sh-surface);
+  border: 1px solid var(--sh-border);
+  border-radius: var(--sh-radius);
+  box-shadow: var(--sh-shadow-md);
+  overflow: hidden;
+  font-size: 13.5px;
+}
+
+/* ── Picker header ─────────────────────────────────────────────────── */
+
+.picker-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--sh-row-stripe);
+  border-bottom: 1px solid var(--sh-border);
+}
+.picker-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--sh-text);
+}
+.picker-title-sub {
+  font-size: 12px;
+  color: var(--sh-text-soft);
+  font-weight: 400;
+}
+.x-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--sh-radius-sm);
+  color: var(--sh-text-soft);
+  font-size: 18px;
+  line-height: 1;
+  cursor: default;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.x-btn:hover { background: var(--sh-row-hover); color: var(--sh-text); }
+.x-btn:focus-visible { outline: 2px solid var(--sh-teal); outline-offset: 1px; }
+
+/* ── Picker body ───────────────────────────────────────────────────── */
+
+.picker-body {
+  padding: 14px 16px;
+  max-height: 480px;
+  overflow-y: auto;
+}
+
+/* ── Form group (inside popover body) ──────────────────────────────── */
+
+.attend-group {
+  margin-bottom: 14px;
+}
+.attend-group:last-child {
+  margin-bottom: 0;
+}
+.attend-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--sh-text);
+  margin-bottom: 6px;
+}
+
+/* ── Radio rows ────────────────────────────────────────────────────── */
+
+.radio-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 4px 0;
+  cursor: default;
+  font-size: 14.5px;
+}
+.radio-row input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.radio-dot {
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--sh-border-strong);
+  border-radius: 50%;
+  background: var(--sh-surface);
+  flex: 0 0 18px;
+  position: relative;
+  transition: border-color 0.12s ease;
+}
+.radio-row input[type="radio"]:checked + .radio-dot {
+  border-color: var(--sh-teal);
+  background: var(--sh-teal);
+  box-shadow: inset 0 0 0 3px var(--sh-surface);
+}
+.radio-row input[type="radio"]:focus-visible + .radio-dot {
+  outline: 2px solid var(--sh-teal);
+  outline-offset: 2px;
+}
+
+/* ── Form controls ─────────────────────────────────────────────────── */
+
+.cell-input {
+  appearance: none;
+  width: 100%;
+  background: var(--sh-surface);
+  border: 1px solid var(--sh-border);
+  padding: 9px 12px;
+  border-radius: var(--sh-radius);
+  font-size: 15px;
+  font-family: inherit;
+  color: var(--sh-text);
+  outline: none;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.cell-input:hover { border-color: var(--sh-border-strong); }
+.cell-input:focus { border-color: var(--sh-teal); box-shadow: var(--sh-focus); }
+
+select.cell-input {
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%235b6470' d='M0 0h10L5 6z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 10px 6px;
+  padding-right: 32px;
+}
+
+.cell-textarea {
+  appearance: none;
+  width: 100%;
+  background: var(--sh-surface);
+  border: 1px solid var(--sh-border);
+  border-radius: var(--sh-radius);
+  padding: 9px 12px;
+  font-size: 13.5px;
+  font-family: inherit;
+  color: var(--sh-text);
+  outline: none;
+  resize: vertical;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.cell-textarea:focus { border-color: var(--sh-teal); box-shadow: var(--sh-focus); }
+
+/* ── Footer (clear + Done) ─────────────────────────────────────────── */
+
+.picker-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--sh-border);
+  margin-top: 4px;
+  padding-top: 12px;
+}
+
+.link-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--sh-teal);
+  padding: 0;
+  font-size: inherit;
+  font-family: inherit;
+  cursor: default;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 2px;
+}
+.link-btn:hover { text-decoration-color: currentColor; }
+.link-btn:focus-visible { outline: 2px solid var(--sh-teal); outline-offset: 2px; }
+.link-danger { color: var(--sh-danger); }
+
+.btn-done {
+  appearance: none;
+  border: 0;
+  background: var(--sh-teal);
+  color: #fff;
+  padding: 8px 18px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  border-radius: var(--sh-radius);
+  cursor: default;
+  transition: background 0.12s ease;
+}
+.btn-done:hover { background: var(--sh-teal-deep); }
+.btn-done:focus-visible { outline: 2px solid var(--sh-teal); outline-offset: 2px; }
+
+/* ── Utility ───────────────────────────────────────────────────────── */
+
+.dot { color: var(--sh-text-soft); margin: 0 2px; }
+.muted { color: var(--sh-text-muted); }
+
+/* ── Reactable integration ─────────────────────────────────────────── */
+/* Allow popovers to escape table cell and row boundaries. */
+
+.rt-table { overflow: visible !important; }
+.rt-tbody { overflow: visible !important; }
+.rt-tr-group { overflow: visible !important; }
+.rt-tr { overflow: visible !important; }
+.rt-td { overflow: visible !important; }
+.ReactTable { overflow: visible !important; }

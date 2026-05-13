@@ -1,0 +1,81 @@
+url: https://matthewcurrier.github.io/reactablePlus/
+
+template:
+  bootstrap: 5
+  bootswatch: flatly
+
+navbar:
+  structure:
+    left:  [intro, reference, articles]
+    right: [search, github]
+  components:
+    github:
+      icon: fa-github
+      href: https://github.com/matthewcurrier/reactablePlus/
+
+reference:
+  - title: "Setup"
+    desc: >
+      Load widget dependencies and wire picker bindings inside reactable.
+    contents:
+      - useReactablePlus
+      - popoverDep
+      - bindPickersOnRender
+
+  - title: "Picker Widgets"
+    desc: >
+      Input constructors and update functions for inline cell editors.
+      Each widget has a Shiny input binding, so its value is available
+      via `input$<id>` on the server side.
+    contents:
+      - schoolPickerInput
+      - updateSchoolPickerInput
+      - useSchoolSearch
+      - attendancePickerInput
+      - updateAttendancePickerInput
+      - homeschoolPickerInput
+      - updateHomeschoolPickerInput
+      - notesInput
+      - updateNotesInput
+      - gearPopoverInput
+      - updateGearPopoverInput
+
+  - title: "Config-Driven Table Module"
+    desc: >
+      A higher-level Shiny module that renders an editable table from a
+      declarative `table_config` object. Handles widget dispatch, mutual
+      exclusion, fill-down, gear toggles, and data marshaling.
+    contents:
+      - config_table_ui
+      - config_table_server
+      - table_config
+      - widget_col
+
+  - title: "Raw-Spec Table Module"
+    desc: >
+      A lower-level Shiny module driven by `row_spec` and `col_spec`
+      lists. Supports dropdowns, numeric inputs, checkboxes, toggles,
+      date pickers, and text fields with gating, selection, and reset.
+    contents:
+      - editable_table_ui
+      - editable_table_server
+      - validate_col_spec
+      - validate_row_spec
+      - validate_row_inputs
+      - collect_inputs
+      - merge_existing_data
+      - make_input_id
+
+  - title: "Grade Utilities"
+    desc: >
+      Helper functions for working with grade-level keys (PK through 12).
+      Used by the config-driven module's fill-down logic.
+    contents:
+      - gradeChoices
+      - gradeIndex
+      - gradeInRange
+
+articles:
+  - title: "Get Started"
+    contents:
+      - reactablePlus
