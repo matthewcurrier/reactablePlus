@@ -2,7 +2,7 @@ Package: reactablePlus
 Title: Enhanced Interactive Tables with Inline Editors for Shiny
 Version: 0.1.0
 Authors@R:
-    person("Matthew", "Currier", email = "first.last@example.com",
+    person("First", "Last", email = "first.last@example.com",
            role = c("aut", "cre"))
 Description: Extends 'reactable' with inline editing widgets (pickers,
     popovers, text inputs) and a declarative configuration layer for
@@ -17,7 +17,7 @@ Depends:
     R (>= 4.1.0)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.3
+RoxygenNote: 7.3.2
 Imports:
     bslib,
     dplyr,
@@ -32,6 +32,7 @@ Imports:
     tibble
 Suggests:
     pkgdown,
+    quarto,
     shinytest2,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
