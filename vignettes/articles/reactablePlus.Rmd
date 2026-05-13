@@ -12,7 +12,9 @@ knitr::opts_chunk$set(
 
 reactablePlus extends [reactable](https://glin.github.io/reactable/) with
 inline editing widgets and two Shiny module layers for building editable
-tables. This article walks through the key concepts.
+tables. It provides everything from low-level input constructors to a
+fully declarative, config-driven table module with picker widgets,
+mutual exclusion, fill-down, and gear toggles.
 
 ## Installation
 
@@ -21,27 +23,105 @@ tables. This article walks through the key concepts.
 pak::pak("matthewcurrier/reactablePlus")
 ```
 
-## Two ways to build editable tables
+## Architecture at a glance
 
-reactablePlus offers two abstraction levels. Pick the one that fits your use
-case.
+reactablePlus is organized in three layers. You can use any layer
+independently or combine them.
 
-### 1. Raw-spec module (maximum flexibility)
+**Layer 1 — Picker widgets.** Standalone Shiny inputs
+(`schoolPickerInput`, `attendancePickerInput`, `homeschoolPickerInput`,
+`notesInput`, `gearPopoverInput`) with custom JS bindings. Use them
+anywhere you'd use a regular Shiny input.
 
-The lower-level module accepts declarative row and column definitions.
-You control every column type (dropdown, numeric, checkbox, toggle, date,
-text) and can wire gating, selection, and reset behavior.
+**Layer 2 — Raw-spec table module.** A Shiny module
+(`editable_table_ui` / `editable_table_server`) that renders an editable
+reactable from declarative row and column definitions. Supports dropdowns,
+numeric spinners, checkboxes, toggles, date pickers, and text fields —
+with gating, row selection, and reset.
 
-Use constructor functions — `row_def()`, `display_col()`, and `input_col()`
-— to build validated specifications. They catch configuration errors at
-creation time instead of at render time.
+**Layer 3 — Config-driven table module.** A higher-level Shiny module
+(`config_table_ui` / `config_table_server`) that renders picker widgets
+inside table cells from a `table_config()` object. Handles mutual
+exclusion, fill-down, gear toggles, and data marshaling out of the box.
+
+
+## Layer 2: The raw-spec table module
+
+This is the most flexible layer. You define rows and columns with
+constructor functions, pass in a data frame, and get an interactive
+editable table.
+
+### Defining rows with `row_def()`
+
+A row definition tells the module which column in your data frame
+identifies rows, which columns to display as read-only, and whether
+rows are selectable.
+
+```{r}
+rows <- row_def(
+  id_col = "id",
+  display_cols = list(
+    display_col("name", "Name"),
+    display_col("department", "Department")
+  ),
+  selectable = TRUE
+)
+```
+
+### Defining input columns with `input_col()`
+
+Each `input_col()` describes one editable column. The `type` argument
+determines what kind of input renders in each cell.
+
+```{r}
+cols <- list(
+  input_col("role", "Role", "dropdown",
+            choices = c("Analyst", "Engineer", "Manager")),
+  input_col("score", "Score", "numeric",
+            min = 0, max = 100, step = 1),
+  input_col("active", "Active", "checkbox"),
+  input_col("start_date", "Start Date", "date",
+            min_date = "2020-01-01"),
+  input_col("notes", "Notes", "text", max_chars = 200)
+)
+```
+
+The constructors validate your configuration immediately — a missing
+`min` on a numeric column or a bad `choices` format on a dropdown will
+error at definition time, not when the app renders.
+
+### Dropdown choices: three formats
+
+`input_col()` accepts dropdown choices in three formats, from simplest
+to most flexible.
+
+```{r}
+# 1. Plain vector — label equals value
+input_col("color", "Color", "dropdown",
+          choices = c("Red", "Blue", "Green"))
+
+# 2. Named vector — names become display labels
+input_col("status", "Status", "dropdown",
+          choices = c("Active" = "active", "On Leave" = "leave"))
+
+# 3. List of lists — for non-character values
+input_col("rating", "Rating", "dropdown",
+          choices = list(
+            list(label = "Good", value = 3),
+            list(label = "OK", value = 2),
+            list(label = "Poor", value = 1)
+          ))
+```
+
+All three are normalized internally via `normalize_choices()`. Use
+the simplest format that fits your use case.
+
+### Putting it together
 
 ```{r}
 library(shiny)
 library(reactablePlus)
 
-# The data frame drives the rows — must contain the id column
-# and any display columns declared in the row definition.
 my_data <- data.frame(
   id   = c("row1", "row2", "row3"),
   name = c("Alice", "Bob", "Carol")
@@ -49,20 +129,12 @@ my_data <- data.frame(
 
 rows <- row_def(
   id_col = "id",
-  display_cols = list(
-    display_col("name", "Name")
-  )
+  display_cols = list(display_col("name", "Name"))
 )
 
 cols <- list(
-  # Simplest form — label == value
   input_col("role", "Role", "dropdown",
             choices = c("Analyst", "Engineer", "Manager")),
-
-  # Named vector — display labels differ from stored values
-  input_col("status", "Status", "dropdown",
-            choices = c("Active" = "active", "On Leave" = "leave")),
-
   input_col("score", "Score", "numeric", min = 0, max = 100, step = 1),
   input_col("active", "Active", "checkbox")
 )
@@ -72,9 +144,58 @@ ui <- fluidPage(
 )
 
 server <- function(input, output, session) {
-  editable_table_server(
+  result <- editable_table_server(
     "demo",
     data_r   = reactive(my_data),
+    row_spec = rows,
+    col_spec = cols
+  )
+
+  # result$current_data is a reactive tibble of all input values
+  # result$selected_ids is a reactive vector of checked row IDs
+}
+
+shinyApp(ui, server)
+```
+
+### A realistic example with mtcars
+
+```{r}
+library(shiny)
+library(reactablePlus)
+
+mtcars$id <- rownames(mtcars[1:20,])
+rownames(mtcars) <- NULL
+
+rows <- row_def(
+  id_col = "id",
+  display_cols = list(
+    display_col("cyl", "Cylinders"),
+    display_col("qsec", "1/4 Mile Time")
+  )
+)
+
+cols <- list(
+  input_col("disp_cat", "Displacement", "dropdown",
+            choices = c("High" = "high", "Medium" = "medium", "Low" = "low")),
+  input_col("score", "Score", "numeric", min = 0, max = 100, step = 1),
+  input_col("flagged", "Flagged", "checkbox"),
+  input_col("assessment", "Assessment", "dropdown",
+            choices = list(
+              list(label = "Good", value = 3),
+              list(label = "OK", value = 2),
+              list(label = "Poor", value = 1)
+            ))
+)
+
+ui <- fluidPage(
+  editable_table_ui("cars")
+)
+
+server <- function(input, output, session) {
+  editable_table_server(
+    "cars",
+    data_r   = reactive(mtcars),
     row_spec = rows,
     col_spec = cols
   )
@@ -83,21 +204,14 @@ server <- function(input, output, session) {
 shinyApp(ui, server)
 ```
 
-Dropdown choices accept three formats: a plain character vector
-(`c("High", "Medium", "Low")`), a named character vector where names
-become labels (`c("High" = "high")`), or the full list-of-lists form
-when you need non-character values like `list(label = "Good", value = 3)`.
-All three are normalized internally via `normalize_choices()`.
 
-Plain lists are still accepted for backward compatibility — the
-constructors are the recommended approach for new code.
-
-### 2. Config-driven module (widget-powered)
+## Layer 3: The config-driven table module
 
 The higher-level module uses `table_config()` and `widget_col()` to
 declaratively describe a table that renders picker widgets in each cell.
-It handles mutual exclusion, fill-down, gear toggles, and data marshaling
-out of the box.
+This is best suited for domain-specific applications where you need
+popover-based editors, school search, attendance tracking, or similar
+complex cell interactions.
 
 ```{r}
 library(shiny)
@@ -130,12 +244,17 @@ server <- function(input, output, session) {
 shinyApp(ui, server)
 ```
 
-## Using picker widgets standalone
 
-You don't have to use the table modules. Every picker widget works as a
-standalone Shiny input.
+## Layer 1: Using picker widgets standalone
+
+Every picker widget works as a standalone Shiny input — you don't need
+the table modules. Just call `useReactablePlus()` in your UI to load
+the required JS and CSS.
 
 ```{r}
+library(shiny)
+library(reactablePlus)
+
 ui <- fluidPage(
   useReactablePlus(),
   schoolPickerInput("my_school", grade_key = "PK",
@@ -153,18 +272,22 @@ server <- function(input, output, session) {
 shinyApp(ui, server)
 ```
 
-## Embedding widgets inside reactable
 
-When placing widgets inside `reactable::colDef(cell = ...)`, two things
-are required:
+## Embedding widgets inside reactable cells
 
-1. Call `useReactablePlus()` in the UI to load JS/CSS at the page level
-   (reactable's React renderer doesn't process `htmlDependency` objects).
+When placing widgets inside `reactable::colDef(cell = ...)`, two extra
+steps are required because reactable's React-based rendering doesn't
+process Shiny's `htmlDependency` objects or initialize input bindings
+automatically.
 
+1. Call `useReactablePlus()` in the UI to load JS/CSS at the page level.
 2. Wrap the reactable widget with `bindPickersOnRender()` to initialize
    Shiny input bindings after the table DOM is created.
 
 ```{r}
+library(shiny)
+library(reactablePlus)
+
 ui <- fluidPage(
   useReactablePlus(),
   reactable::reactableOutput("tbl")
@@ -194,11 +317,25 @@ server <- function(input, output, session) {
 shinyApp(ui, server)
 ```
 
+
+## Choosing the right layer
+
+| Need | Use |
+|---|---|
+| A quick editable table with standard inputs | Layer 2: `row_def()` + `input_col()` + `editable_table_server()` |
+| Popover-based pickers with cross-column logic | Layer 3: `table_config()` + `widget_col()` + `config_table_server()` |
+| A single picker input outside a table | Layer 1: `schoolPickerInput()`, `notesInput()`, etc. |
+| Widgets inside a custom reactable layout | Layer 1 + `useReactablePlus()` + `bindPickersOnRender()` |
+
+
 ## Next steps
 
 - Browse the [Reference](reference/index.html) for full documentation of
-  every function.
-- See the [Config-Driven Table Module](reference/config_table_ui.html) docs
-  for mutual exclusion, fill-down, and gear toggle configuration.
-- See the [Raw-Spec Table Module](reference/editable_table_ui.html) docs
-  for gating, selection, and reset behavior.
+  every exported function.
+- See `config_table_ui()` docs for mutual exclusion, fill-down, and
+  gear toggle configuration.
+- See `editable_table_ui()` docs for gating, selection, and reset
+  behavior.
+- Use `validate_col_spec()` and `validate_row_spec()` to debug
+  configuration issues — they produce specific, actionable error messages.
+
