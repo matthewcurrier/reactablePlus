@@ -61,6 +61,8 @@ communication. Pass \code{session$ns("")} from within a module. For
 top-level apps, leave as \code{""}.}
 
 \item{width}{CSS width. Default \code{"100\%"}.}
+
+\item{...}{Arguments passed to \code{\link[=searchPickerInput]{searchPickerInput()}}.}
 }
 \value{
 An \link[htmltools:tagList]{htmltools::tagList}.

@@ -22,6 +22,8 @@ updateSchoolPickerInput(...)
 \item{value}{New value (named list) or \code{NULL} to clear.}
 
 \item{show_nces_id}{Logical. Update the NCES ID display toggle.}
+
+\item{...}{Arguments passed to \code{\link[=updateSearchPickerInput]{updateSearchPickerInput()}}.}
 }
 \value{
 Called for its side effect; returns invisibly.

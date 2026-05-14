@@ -8,11 +8,11 @@
 #' @param example Character. The name of the example to run.
 #'   Available examples:
 #'   \describe{
-#'     \item{`"inventory"`}{Product inventory tracker — all 6 primitive
+#'     \item{`"inventory"`}{Product inventory tracker -- all 6 primitive
 #'       input types, value-based gating, reset, badge column.}
-#'     \item{`"roster"`}{Team roster — row selection, chained
+#'     \item{`"roster"`}{Team roster -- row selection, chained
 #'       selection + value gating, reset, selected_ids output.}
-#'     \item{`"evaluations"`}{Student evaluations — attendance_picker
+#'     \item{`"evaluations"`}{Student evaluations -- attendance_picker
 #'       with custom sections, notes_input, badge_render_fn,
 #'       row_class_fn, mixing picker and primitive columns.}
 #'   }
@@ -50,14 +50,14 @@ runExample <- function(example = NULL, port = NULL) {
   if (is.null(example)) {
     message("Available reactablePlus examples:\n")
     descriptions <- c(
-      inventory = "Product inventory — primitive types, gating, reset",
-      roster = "Team roster — selection, chained gating, reset",
-      evaluations = "Student evaluations — picker widgets, badge, row class",
-      `school-history` = "School history — school picker, attendance, homeschool, mutual exclusion"
+      inventory = "Product inventory -- primitive types, gating, reset",
+      roster = "Team roster -- selection, chained gating, reset",
+      evaluations = "Student evaluations -- picker widgets, badge, row class",
+      `school-history` = "School history -- search picker, attendance, homeschool, mutual exclusion"
     )
     purrr::iwalk(descriptions, function(desc, name) {
       marker <- if (name %in% available) "\u2713" else "\u2717"
-      message("  ", marker, " ", name, " — ", desc)
+      message("  ", marker, " ", name, " -- ", desc)
     })
     message("\nRun with: reactablePlus::runExample(\"inventory\")")
     return(invisible(NULL))

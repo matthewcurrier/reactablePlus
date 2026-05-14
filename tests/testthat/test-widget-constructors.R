@@ -1,14 +1,14 @@
 # ── schoolPickerInput ─────────────────────────────────────────────────────
 
 test_that("schoolPickerInput produces a div with correct class", {
-  tag <- schoolPickerInput("test_id", grade_key = "PK")
+  tag <- searchPickerInput("test_id", grade_key = "PK")
   html <- as.character(tag)
   expect_match(html, 'class="sh-school-picker pv-container"')
   expect_match(html, 'id="test_id"')
 })
 
 test_that("schoolPickerInput includes grade key data attribute", {
-  tag <- schoolPickerInput("s1", grade_key = "05", grade_label = "5th grade")
+  tag <- searchPickerInput("s1", grade_key = "05", grade_label = "5th grade")
   html <- as.character(tag)
   expect_match(html, 'data-grade-key="05"')
   expect_match(html, 'data-grade-label="5th grade"')
@@ -16,7 +16,7 @@ test_that("schoolPickerInput includes grade key data attribute", {
 
 test_that("schoolPickerInput encodes initial value as JSON", {
   val <- list(id = "123", name = "Test School", city = "Boston", state = "MA")
-  tag <- schoolPickerInput("s2", value = val)
+  tag <- searchPickerInput("s2", value = val)
   html <- as.character(tag)
   expect_match(html, "data-initial-value=")
   # JSON should contain the school name
@@ -24,20 +24,20 @@ test_that("schoolPickerInput encodes initial value as JSON", {
 })
 
 test_that("schoolPickerInput sets null initial value when empty", {
-  tag <- schoolPickerInput("s3")
+  tag <- searchPickerInput("s3")
   html <- as.character(tag)
   expect_match(html, 'data-initial-value="null"')
 })
 
 test_that("schoolPickerInput sets show-nces-id attribute", {
-  tag_on  <- schoolPickerInput("s4", show_nces_id = TRUE)
-  tag_off <- schoolPickerInput("s5", show_nces_id = FALSE)
+  tag_on  <- searchPickerInput("s4", show_nces_id = TRUE)
+  tag_off <- searchPickerInput("s5", show_nces_id = FALSE)
   expect_match(as.character(tag_on),  'data-show-nces-id="true"')
   expect_match(as.character(tag_off), 'data-show-nces-id="false"')
 })
 
 test_that("schoolPickerInput has attached dependencies", {
-  tag <- schoolPickerInput("s6")
+  tag <- searchPickerInput("s6")
   deps <- htmltools::htmlDependencies(tag)
   dep_names <- vapply(deps, `[[`, character(1), "name")
   expect_true("popover-core" %in% dep_names)
@@ -45,7 +45,7 @@ test_that("schoolPickerInput has attached dependencies", {
 })
 
 test_that("schoolPickerInput passes namespace attribute", {
-  tag <- schoolPickerInput("s7", ns = "mymodule-")
+  tag <- searchPickerInput("s7", ns = "mymodule-")
   html <- as.character(tag)
   expect_match(html, 'data-ns="mymodule-"')
 })

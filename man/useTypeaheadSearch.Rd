@@ -18,6 +18,8 @@ useSchoolSearch(...)
 data frame of matching results.}
 
 \item{limit}{Maximum number of results to return. Default 25.}
+
+\item{...}{Arguments passed to \code{\link[=useTypeaheadSearch]{useTypeaheadSearch()}}.}
 }
 \value{
 Invisible \code{NULL}. Called for its side effect.

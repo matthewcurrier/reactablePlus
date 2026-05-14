@@ -196,6 +196,7 @@ useTypeaheadSearch <- function(input, session, search_fn, limit = 25L) {
 #' @rdname searchPickerInput
 #' @description `schoolPickerInput()` is a deprecated alias for
 #'   `searchPickerInput()`. It will be removed in a future release.
+#' @param ... Arguments passed to [searchPickerInput()].
 #' @export
 schoolPickerInput <- function(...) {
   .Deprecated("searchPickerInput")
@@ -205,6 +206,7 @@ schoolPickerInput <- function(...) {
 #' @rdname updateSearchPickerInput
 #' @description `updateSchoolPickerInput()` is a deprecated alias for
 #'   `updateSearchPickerInput()`. It will be removed in a future release.
+#' @param ... Arguments passed to [updateSearchPickerInput()].
 #' @export
 updateSchoolPickerInput <- function(...) {
   .Deprecated("updateSearchPickerInput")
@@ -214,6 +216,7 @@ updateSchoolPickerInput <- function(...) {
 #' @rdname useTypeaheadSearch
 #' @description `useSchoolSearch()` is a deprecated alias for
 #'   `useTypeaheadSearch()`. It will be removed in a future release.
+#' @param ... Arguments passed to [useTypeaheadSearch()].
 #' @export
 useSchoolSearch <- function(...) {
   .Deprecated("useTypeaheadSearch")

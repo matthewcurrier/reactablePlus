@@ -17,6 +17,10 @@
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="articles/reactablePlus.html">Get started</a></li>
 <li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="articles/grade-entry.html">Grade Entry with config_table</a></li>
+  </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="search.json"></form></li>
 <li class="nav-item"><a class="external-link nav-link" href="https://github.com/matthewcurrier/reactablePlus/" aria-label="GitHub"><span class="fa fa-github"></span></a></li>
@@ -29,7 +33,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Migration Guide: schoolhistory Downstream Package</h1>
-      <small class="dont-index">Source: <a href="https://github.com/OWNER/reactablePlus/blob/HEAD/MIGRATION_GUIDE.md" class="external-link"><code>MIGRATION_GUIDE.md</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/matthewcurrier/reactablePlus/blob/HEAD/MIGRATION_GUIDE.md" class="external-link"><code>MIGRATION_GUIDE.md</code></a></small>
     </div>
 
 <div id="migration-guide-schoolhistory-downstream-package" class="section level1">
@@ -74,7 +78,7 @@
 <td><code><a href="reference/widget_col.html">widget_col()</a></code></td>
 </tr><tr><td><code>editable_table_ui(id, config)</code></td>
 <td><code>config_table_ui(id, config)</code></td>
-</tr><tr><td><code><a href="reference/editable_table_server.html">editable_table_server()</a></code></td>
+</tr><tr><td><code>editable_table_server()</code></td>
 <td><code><a href="reference/config_table_server.html">config_table_server()</a></code></td>
 </tr><tr><td><code><a href="reference/useReactablePlus.html">useSchoolHistory()</a></code></td>
 <td><code><a href="reference/useReactablePlus.html">useReactablePlus()</a></code></td>
@@ -96,11 +100,11 @@
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="va">school_history_ui</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">id</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="reference/editable_table_ui.html">editable_table_ui</a></span><span class="op">(</span><span class="va">id</span>, <span class="fu">school_history_config</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu">editable_table_ui</span><span class="op">(</span><span class="va">id</span>, <span class="fu">school_history_config</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="va">school_history_server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">id</span>, <span class="va">...</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="reference/editable_table_server.html">editable_table_server</a></span><span class="op">(</span><span class="va">id</span>, <span class="fu">school_history_config</span><span class="op">(</span><span class="op">)</span>, <span class="va">...</span><span class="op">)</span></span>
+<span>  <span class="fu">editable_table_server</span><span class="op">(</span><span class="va">id</span>, <span class="fu">school_history_config</span><span class="op">(</span><span class="op">)</span>, <span class="va">...</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="co"># AFTER</span></span>
@@ -125,7 +129,7 @@
 </div>
 <div class="section level3">
 <h3 id="in-demo-apps">In demo apps<a class="anchor" aria-label="anchor" href="#in-demo-apps"></a></h3>
-<p>Replace all instances of: - <code><a href="https://rdrr.io/r/base/library.html" class="external-link">library(schoolhistory)</a></code> → <code><a href="https://github.com/OWNER/reactablePlus" class="external-link">library(reactablePlus)</a></code> (or add both) - <code><a href="reference/useReactablePlus.html">useSchoolHistory()</a></code> → <code><a href="reference/useReactablePlus.html">useReactablePlus()</a></code> - <code>col_spec(...)</code> → <code>widget_col(...)</code> - <code>editable_table_ui(id, config)</code> → <code>config_table_ui(id, config)</code> - <code>editable_table_server(...)</code> → <code>config_table_server(...)</code></p>
+<p>Replace all instances of: - <code><a href="https://rdrr.io/r/base/library.html" class="external-link">library(schoolhistory)</a></code> → <code><a href="https://rdrr.io/r/base/library.html" class="external-link">library(reactablePlus)</a></code> (or add both) - <code><a href="reference/useReactablePlus.html">useSchoolHistory()</a></code> → <code><a href="reference/useReactablePlus.html">useReactablePlus()</a></code> - <code>col_spec(...)</code> → <code>widget_col(...)</code> - <code>editable_table_ui(id, config)</code> → <code>config_table_ui(id, config)</code> - <code>editable_table_server(...)</code> → <code>config_table_server(...)</code></p>
 </div>
 <div class="section level3">
 <h3 id="description-for-schoolhistory">DESCRIPTION for schoolhistory<a class="anchor" aria-label="anchor" href="#description-for-schoolhistory"></a></h3>

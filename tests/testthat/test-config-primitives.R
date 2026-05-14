@@ -9,7 +9,7 @@
 
 test_that("widget_col accepts all valid types", {
   valid_types <- c(
-    "school_picker",
+    "search_picker",
     "attendance_picker",
     "homeschool_picker",
     "notes_input",
@@ -201,7 +201,7 @@ test_that("widget_col infers correct empty_value per type", {
     ""
   )
   expect_null(
-    widget_col("x", "school_picker", "X")$empty_value
+    widget_col("x", "search_picker", "X")$empty_value
   )
 })
 

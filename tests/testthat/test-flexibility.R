@@ -1,28 +1,35 @@
 # Tests that verify the widgets accept the parameters needed for
 # extensibility and handle edge cases gracefully.
 
-# ── SchoolPicker flexibility ─────────────────────────────────────────────
+# ── SearchPicker flexibility ─────────────────────────────────────────────
 
-test_that("schoolPickerInput works with minimal arguments", {
-  tag <- schoolPickerInput("sp_min")
+test_that("searchPickerInput works with minimal arguments", {
+  tag <- searchPickerInput("sp_min")
   html <- as.character(tag)
   expect_match(html, 'id="sp_min"')
   expect_match(html, 'data-initial-value="null"')
 })
 
-test_that("schoolPickerInput accepts school with grade range fields", {
+test_that("searchPickerInput accepts school with grade range fields", {
   val <- list(
-    id = "123", name = "Test", district = "D", city = "C", state = "MA",
-    type = "Public", low_grade = "K", high_grade = "08"
+    id = "123",
+    name = "Test",
+    district = "D",
+    city = "C",
+    state = "MA",
+    type = "Public",
+    low_grade = "K",
+    high_grade = "08"
   )
-  tag <- schoolPickerInput("sp_range", value = val)
+  tag <- searchPickerInput("sp_range", value = val)
   html <- as.character(tag)
   expect_match(html, "low_grade")
   expect_match(html, "high_grade")
 })
 
-test_that("schoolPickerInput handles NULL optional fields", {
-  tag <- schoolPickerInput("sp_null",
+test_that("searchPickerInput handles NULL optional fields", {
+  tag <- searchPickerInput(
+    "sp_null",
     grade_label = NULL,
     grade_key = NULL,
     show_nces_id = TRUE,
@@ -31,8 +38,9 @@ test_that("schoolPickerInput handles NULL optional fields", {
   expect_match(as.character(tag), 'id="sp_null"')
 })
 
-test_that("schoolPickerInput accepts custom trigger and popover labels", {
-  tag <- schoolPickerInput("sp_labels",
+test_that("searchPickerInput accepts custom trigger and popover labels", {
+  tag <- searchPickerInput(
+    "sp_labels",
     trigger_label = "+ Find provider",
     popover_title = "Search providers",
     search_placeholder = "Type provider name...",
@@ -47,14 +55,14 @@ test_that("schoolPickerInput accepts custom trigger and popover labels", {
   expect_match(html, 'data-no-match-hint="No providers found\\."')
 })
 
-test_that("schoolPickerInput supports show_fill_down = FALSE", {
-  tag <- schoolPickerInput("sp_nofill", show_fill_down = FALSE)
+test_that("searchPickerInput supports show_fill_down = FALSE", {
+  tag <- searchPickerInput("sp_nofill", show_fill_down = FALSE)
   html <- as.character(tag)
   expect_match(html, 'data-show-fill-down="false"')
 })
 
-test_that("schoolPickerInput defaults show_fill_down to TRUE", {
-  tag <- schoolPickerInput("sp_fill")
+test_that("searchPickerInput defaults show_fill_down to TRUE", {
+  tag <- searchPickerInput("sp_fill")
   html <- as.character(tag)
   expect_match(html, 'data-show-fill-down="true"')
 })
@@ -110,7 +118,8 @@ test_that("attendancePickerInput accepts custom sections", {
 })
 
 test_that("attendancePickerInput accepts custom trigger and popover labels", {
-  tag <- attendancePickerInput("att_labels",
+  tag <- attendancePickerInput(
+    "att_labels",
     trigger_label = "+ Rate behavior",
     popover_title = "Behavior Rating"
   )
@@ -126,7 +135,8 @@ test_that("attendancePickerInput supports show_notes = FALSE", {
 })
 
 test_that("attendancePickerInput accepts custom notes placeholder", {
-  tag <- attendancePickerInput("att_placeholder",
+  tag <- attendancePickerInput(
+    "att_placeholder",
     notes_placeholder = "Context, observations..."
   )
   html <- as.character(tag)
@@ -180,7 +190,8 @@ test_that("homeschoolPickerInput works with defaults", {
 })
 
 test_that("homeschoolPickerInput accepts custom providers", {
-  tag <- homeschoolPickerInput("hs_prov",
+  tag <- homeschoolPickerInput(
+    "hs_prov",
     providers = c("Occupational Therapist", "Speech Therapist", "Other")
   )
   html <- as.character(tag)
@@ -191,7 +202,8 @@ test_that("homeschoolPickerInput accepts custom providers", {
 })
 
 test_that("homeschoolPickerInput accepts custom labels", {
-  tag <- homeschoolPickerInput("hs_labels",
+  tag <- homeschoolPickerInput(
+    "hs_labels",
     trigger_label = "+ Add therapy",
     trigger_sub_label = NULL,
     popover_title = "Therapy details",
@@ -251,7 +263,8 @@ test_that("homeschoolPickerInput encodes empty list as homeschool-on", {
 })
 
 test_that("homeschoolPickerInput custom providers without Other omit Other logic", {
-  tag <- homeschoolPickerInput("hs_noother",
+  tag <- homeschoolPickerInput(
+    "hs_noother",
     providers = c("Parent", "Tutor", "Agency")
   )
   html <- as.character(tag)
@@ -271,7 +284,7 @@ test_that("homeschoolPickerInput custom providers without Other omit Other logic
 
 test_that("all widgets work with zero optional arguments (pure backward compat)", {
   # These calls mirror exactly how the widgets were used before Phase 1
-  s <- schoolPickerInput("compat_s", grade_key = "PK", grade_label = "PreK")
+  s <- searchPickerInput("compat_s", grade_key = "PK", grade_label = "PreK")
   a <- attendancePickerInput("compat_a", grade_label = "PreK")
   h <- homeschoolPickerInput("compat_h", grade_label = "PreK", grade_key = "PK")
 

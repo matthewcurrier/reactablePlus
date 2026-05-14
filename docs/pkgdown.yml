@@ -2,8 +2,9 @@ pandoc: 3.8.3
 pkgdown: 2.2.0
 pkgdown_sha: ~
 articles:
+  articles/grade-entry: grade-entry.html
   articles/reactablePlus: reactablePlus.html
-last_built: 2026-05-13T16:44Z
+last_built: 2026-05-14T22:42Z
 urls:
   reference: https://matthewcurrier.github.io/reactablePlus/reference
   article: https://matthewcurrier.github.io/reactablePlus/articles
