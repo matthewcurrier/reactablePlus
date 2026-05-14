@@ -22,6 +22,7 @@ reference:
       - useReactablePlus
       - popoverDep
       - bindPickersOnRender
+      - runExample
 
   - title: "Picker Widgets"
     desc: >

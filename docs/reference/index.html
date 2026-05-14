@@ -17,6 +17,7 @@
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/reactablePlus.html">Get started</a></li>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
+<li class="nav-item"><a class="nav-link" href="../articles/index.html">Articles</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
 <li class="nav-item"><a class="external-link nav-link" href="https://github.com/matthewcurrier/reactablePlus/" aria-label="GitHub"><span class="fa fa-github"></span></a></li>
@@ -61,6 +62,13 @@
 
         </dt>
         <dd>Bind picker inputs after a reactable renders</dd>
+
+        <dt>
+
+          <code><a href="runExample.html">runExample()</a></code>
+
+        </dt>
+        <dd>Run a reactablePlus example app</dd>
       </dl></div><div class="section level2">
       <h2 id="picker-widgets">Picker Widgets<a class="anchor" aria-label="anchor" href="#picker-widgets"></a></h2>
 
@@ -73,24 +81,24 @@
 
       <dl><dt>
 
-          <code><a href="schoolPickerInput.html">schoolPickerInput()</a></code>
+          <code><a href="searchPickerInput.html">searchPickerInput()</a></code> <code><a href="searchPickerInput.html">schoolPickerInput()</a></code>
 
         </dt>
-        <dd>School picker input</dd>
+        <dd>Search picker input</dd>
 
         <dt>
 
-          <code><a href="updateSchoolPickerInput.html">updateSchoolPickerInput()</a></code>
+          <code><a href="updateSearchPickerInput.html">updateSearchPickerInput()</a></code> <code><a href="updateSearchPickerInput.html">updateSchoolPickerInput()</a></code>
 
         </dt>
-        <dd>Update a school picker from the server</dd>
+        <dd>Update a search picker from the server</dd>
 
         <dt>
 
-          <code><a href="useSchoolSearch.html">useSchoolSearch()</a></code>
+          <code><a href="useTypeaheadSearch.html">useTypeaheadSearch()</a></code> <code><a href="useTypeaheadSearch.html">useSchoolSearch()</a></code>
 
         </dt>
-        <dd>Wire up server-side school search</dd>
+        <dd>Wire up server-side typeahead search</dd>
 
         <dt>
 
@@ -150,7 +158,7 @@
       </dl></div><div class="section level2">
       <h2 id="config-driven-table-module">Config-Driven Table Module<a class="anchor" aria-label="anchor" href="#config-driven-table-module"></a></h2>
 
-      <div class="section-desc"><p>A higher-level Shiny module that renders an editable table from a declarative <code>table_config</code> object. Handles widget dispatch, mutual exclusion, fill-down, gear toggles, and data marshaling.</p></div>
+      <div class="section-desc"><p>A Shiny module that renders an editable table from a declarative <code>table_config</code> object. Handles widget dispatch, mutual exclusion, fill-down, gear toggles, and data marshaling.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -184,75 +192,17 @@
 
         </dt>
         <dd>Build a widget column specification</dd>
-      </dl></div><div class="section level2">
-      <h2 id="raw-spec-table-module">Raw-Spec Table Module<a class="anchor" aria-label="anchor" href="#raw-spec-table-module"></a></h2>
-
-      <div class="section-desc"><p>A lower-level Shiny module driven by <code>row_spec</code> and <code>col_spec</code> lists. Supports dropdowns, numeric inputs, checkboxes, toggles, date pickers, and text fields with gating, selection, and reset.</p></div>
-
-      <dl></dl></div><div class="section level2">
-
-
-
-
-      <dl><dt>
-
-          <code><a href="editable_table_ui.html">editable_table_ui()</a></code>
-
-        </dt>
-        <dd>UI function for the editable table Shiny module</dd>
 
         <dt>
 
-          <code><a href="editable_table_server.html">editable_table_server()</a></code>
+          <code><a href="normalize_choices.html">normalize_choices()</a></code>
 
         </dt>
-        <dd>Server function for the editable table Shiny module</dd>
-
-        <dt>
-
-          <code><a href="validate_col_spec.html">validate_col_spec()</a></code>
-
-        </dt>
-        <dd>Validate a col_spec list</dd>
-
-        <dt>
-
-          <code><a href="validate_row_spec.html">validate_row_spec()</a></code>
-
-        </dt>
-        <dd>Validate a row_spec list</dd>
-
-        <dt>
-
-          <code><a href="validate_row_inputs.html">validate_row_inputs()</a></code>
-
-        </dt>
-        <dd>Validate user-supplied input values against col_spec rules</dd>
-
-        <dt>
-
-          <code><a href="collect_inputs.html">collect_inputs()</a></code>
-
-        </dt>
-        <dd>Collect inline Shiny input values into a tidy tibble</dd>
-
-        <dt>
-
-          <code><a href="merge_existing_data.html">merge_existing_data()</a></code>
-
-        </dt>
-        <dd>Merge previously saved values onto the display data frame</dd>
-
-        <dt>
-
-          <code><a href="make_input_id.html">make_input_id()</a></code>
-
-        </dt>
-        <dd>Generate a stable, unique input element ID</dd>
+        <dd>Normalize dropdown choices to list-of-lists format</dd>
       </dl></div><div class="section level2">
       <h2 id="grade-utilities">Grade Utilities<a class="anchor" aria-label="anchor" href="#grade-utilities"></a></h2>
 
-      <div class="section-desc"><p>Helper functions for working with grade-level keys (PK through 12). Used by the config-driven module’s fill-down logic.</p></div>
+      <div class="section-desc"><p>Helper functions for working with grade-level keys (PK through 12). Convenience utilities for education-domain applications; not required by the core table infrastructure.</p></div>
 
       <dl></dl></div><div class="section level2">
 

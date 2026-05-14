@@ -21,6 +21,7 @@ runs before reactable creates its DOM."></head><body>
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/reactablePlus.html">Get started</a></li>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
+<li class="nav-item"><a class="nav-link" href="../articles/index.html">Articles</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
 <li class="nav-item"><a class="external-link nav-link" href="https://github.com/matthewcurrier/reactablePlus/" aria-label="GitHub"><span class="fa fa-github"></span></a></li>
@@ -33,7 +34,7 @@ runs before reactable creates its DOM."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Bind picker inputs after a reactable renders</h1>
-      <small class="dont-index">Source: <a href="https://github.com/OWNER/reactablePlus/blob/HEAD/R/dependencies.R" class="external-link"><code>R/dependencies.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/matthewcurrier/reactablePlus/blob/HEAD/R/dependencies.R" class="external-link"><code>R/dependencies.R</code></a></small>
       <div class="d-none name"><code>bindPickersOnRender.Rd</code></div>
     </div>
 
@@ -71,7 +72,7 @@ runs before reactable creates its DOM.</p>
 <span class="r-in"><span><span class="va">output</span><span class="op">$</span><span class="va">table</span> <span class="op">&lt;-</span> <span class="fu">renderReactable</span><span class="op">(</span><span class="op">{</span></span></span>
 <span class="r-in"><span>  <span class="va">tbl</span> <span class="op">&lt;-</span> <span class="fu">reactable</span><span class="op">(</span><span class="va">data</span>, columns <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>    school <span class="op">=</span> <span class="fu">colDef</span><span class="op">(</span>html <span class="op">=</span> <span class="cn">TRUE</span>, cell <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">value</span>, <span class="va">index</span><span class="op">)</span> <span class="op">{</span></span></span>
-<span class="r-in"><span>      <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character</a></span><span class="op">(</span><span class="fu"><a href="schoolPickerInput.html">schoolPickerInput</a></span><span class="op">(</span><span class="st">"school_1"</span>, grade_key <span class="op">=</span> <span class="st">"PK"</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span>      <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character</a></span><span class="op">(</span><span class="fu"><a href="searchPickerInput.html">searchPickerInput</a></span><span class="op">(</span><span class="st">"school_1"</span>, grade_key <span class="op">=</span> <span class="st">"PK"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span>    <span class="op">}</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="fu">bindPickersOnRender</span><span class="op">(</span><span class="va">tbl</span><span class="op">)</span></span></span>
