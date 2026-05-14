@@ -1,7 +1,15 @@
 ---
-title: "Using config_table with reactablePlus"
+title: "Using Config Table with reactablePlus"
 output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Using Config Table with reactablePlus}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(eval = FALSE)
+```
 This article walks through a practical use case for `config_table`:
 a student grade entry form backed by a SQLite database. We define
 the table declaratively with `table_config()` and `widget_col()`,

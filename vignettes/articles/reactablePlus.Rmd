@@ -1,8 +1,15 @@
 ---
 title: "Getting Started with reactablePlus"
 output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting Started with reactablePlus}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
 
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(eval = FALSE)
+```
 
 reactablePlus extends [reactable](https://glin.github.io/reactable/) with
 inline editing and popover-based picker widgets for Shiny. Build editable
