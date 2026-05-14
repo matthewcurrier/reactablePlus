@@ -1,17 +1,17 @@
-#' School picker input
+#' Search picker input
 #'
-#' Creates a school picker widget with typeahead search. When empty, renders a
+#' Creates a typeahead search picker widget. When empty, renders a
 #' dashed-border trigger button. When filled, renders a card showing
-#' school name, public/private pill, district, city/state, NCES ID, and action
-#' links (change, fill down, clear).
+#' the selected result's details and action links (change, fill down,
+#' clear).
 #'
 #' Search is server-side: the widget sends queries to R via
-#' `input$<ns>school_search`; use `useSchoolSearch()` in your server function
-#' to wire up the response.
+#' `input$<ns>school_search`; use [useTypeaheadSearch()] in your
+#' server function to wire up the response.
 #'
-#' Trigger and popover labels are configurable so the widget can be reused
-#' for any server-side typeahead scenario (provider search, facility
-#' lookup, etc.).
+#' Trigger and popover labels are configurable so the widget can be
+#' used for any server-side typeahead scenario (school search,
+#' provider lookup, facility search, etc.).
 #'
 #' @param inputId Character. The Shiny input ID. The value is a named list
 #'   with `id`, `name`, `district`, `city`, `state`, `type`, or `NULL`.
@@ -43,11 +43,11 @@
 #'
 #' @examples
 #' \dontrun{
-#' # Default (backward compatible)
-#' schoolPickerInput("school_PK", grade_label = "PreK", grade_key = "PK")
+#' # School search (default labels)
+#' searchPickerInput("school_PK", grade_label = "PreK", grade_key = "PK")
 #'
 #' # Custom labels for provider search
-#' schoolPickerInput("provider_PK",
+#' searchPickerInput("provider_PK",
 #'   trigger_label = "+ Find provider",
 #'   popover_title = "Search providers",
 #'   search_placeholder = "Type provider name or specialty\u2026",
@@ -63,7 +63,7 @@
 #' @export
 #' @importFrom htmltools tagList tags
 #' @importFrom jsonlite toJSON
-schoolPickerInput <- function(
+searchPickerInput <- function(
   inputId,
   value = NULL,
   grade_label = NULL,
@@ -101,21 +101,21 @@ schoolPickerInput <- function(
     `data-ns` = ns
   )
 
-  htmltools::attachDependencies(tag, list(popoverDep(), school_picker_dep()))
+  htmltools::attachDependencies(tag, list(popoverDep(), search_picker_dep()))
 }
 
 
-#' Update a school picker from the server
+#' Update a search picker from the server
 #'
 #' @param session The Shiny session object.
 #' @param inputId Character. The input ID to update.
-#' @param value New school value (named list) or `NULL` to clear.
+#' @param value New value (named list) or `NULL` to clear.
 #' @param show_nces_id Logical. Update the NCES ID display toggle.
 #'
 #' @return Called for its side effect; returns invisibly.
 #' @export
 #' @importFrom shiny getDefaultReactiveDomain
-updateSchoolPickerInput <- function(
+updateSearchPickerInput <- function(
   session = getDefaultReactiveDomain(),
   inputId,
   value = NULL,
@@ -132,21 +132,21 @@ updateSchoolPickerInput <- function(
 }
 
 
-#' Wire up server-side school search
+#' Wire up server-side typeahead search
 #'
 #' Call this once in your Shiny server function (or module server). It
-#' observes the shared `school_search` input sent by all school pickers
+#' observes the shared `school_search` input sent by all search pickers
 #' and routes results back to the correct widget.
 #'
 #' @param input The Shiny `input` object.
 #' @param session The Shiny `session` object.
 #' @param search_fn A function that takes `(query, limit)` and returns a
-#'   data frame of matching schools.
+#'   data frame of matching results.
 #' @param limit Maximum number of results to return. Default 25.
 #'
 #' @return Invisible `NULL`. Called for its side effect.
 #' @export
-useSchoolSearch <- function(input, session, search_fn, limit = 25L) {
+useTypeaheadSearch <- function(input, session, search_fn, limit = 25L) {
   shiny::observeEvent(
     input$school_search,
     {
@@ -188,4 +188,34 @@ useSchoolSearch <- function(input, session, search_fn, limit = 25L) {
   )
 
   invisible(NULL)
+}
+
+
+# ── Deprecated aliases ───────────────────────────────────────────────────────
+
+#' @rdname searchPickerInput
+#' @description `schoolPickerInput()` is a deprecated alias for
+#'   `searchPickerInput()`. It will be removed in a future release.
+#' @export
+schoolPickerInput <- function(...) {
+  .Deprecated("searchPickerInput")
+  searchPickerInput(...)
+}
+
+#' @rdname updateSearchPickerInput
+#' @description `updateSchoolPickerInput()` is a deprecated alias for
+#'   `updateSearchPickerInput()`. It will be removed in a future release.
+#' @export
+updateSchoolPickerInput <- function(...) {
+  .Deprecated("updateSearchPickerInput")
+  updateSearchPickerInput(...)
+}
+
+#' @rdname useTypeaheadSearch
+#' @description `useSchoolSearch()` is a deprecated alias for
+#'   `useTypeaheadSearch()`. It will be removed in a future release.
+#' @export
+useSchoolSearch <- function(...) {
+  .Deprecated("useTypeaheadSearch")
+  useTypeaheadSearch(...)
 }

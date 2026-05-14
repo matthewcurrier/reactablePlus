@@ -42,7 +42,7 @@
 #' @param toolbar_stats_fn Function `(rows, row_keys)` -> [shiny::HTML]
 #'   string for the toolbar. Pass `NULL` for no toolbar.
 #' @param search_fn_col Character. Column ID that requires server-side
-#'   search (i.e. uses `useSchoolSearch()`). Pass `NULL` if no column
+#'   search (i.e. uses [useTypeaheadSearch()]). Pass `NULL` if no column
 #'   needs search. Default `NULL`.
 #' @param badge_col Character or NULL. When non-NULL, a static label
 #'   column is shown using `row_labels`. Default `NULL` (no badge).
@@ -67,9 +67,10 @@
 #' string to show in the cleared column's cell).
 #'
 #' `interactions$fill_down`: a list with `column` (column ID),
-#' `range_check` (logical), and optionally `input_name` (character —
-#' the Shiny input name the widget JS sends; defaults to
-#' `paste0(column, "_fill_down")`).
+#' `range_check_fn` (optional function `(row_key, value) -> logical`
+#' that returns `TRUE` when the row is in range for fill-down), and
+#' optionally `input_name` (character — the Shiny input name the
+#' widget JS sends; defaults to `paste0(column, "_fill_down")`).
 #'
 #' ## Gating
 #'
@@ -86,7 +87,7 @@
 #'   row_keys   = c("PK", "K", "01"),
 #'   row_labels = c("PreK", "K", "1st"),
 #'   columns    = list(
-#'     widget_col("school", "school_picker", "School", min_width = 300),
+#'     widget_col("school", "search_picker", "School", min_width = 300),
 #'     widget_col("attendance", "attendance_picker", "Attendance", width = 200)
 #'   ),
 #'   badge_col = "grade",
@@ -210,7 +211,7 @@ table_config <- function(
 #' @param type Character. One of:
 #'
 #'   **Picker widgets** (complex popover-based inputs):
-#'   `"school_picker"`, `"attendance_picker"`, `"homeschool_picker"`,
+#'   `"search_picker"`, `"attendance_picker"`, `"homeschool_picker"`,
 #'   `"notes_input"`.
 #'
 #'   **Primitive inputs** (inline HTML form controls):
@@ -225,7 +226,7 @@ table_config <- function(
 #' @param options Named list of type-specific options:
 #'
 #'   **Picker widgets**: passed to the widget constructor (e.g.
-#'   `list(show_nces_id = TRUE)` for school picker,
+#'   `list(show_nces_id = TRUE)` for search picker,
 #'   `list(sections = ...)` for attendance picker).
 #'
 #'   **dropdown**: `choices` (required — character vector, named
@@ -289,7 +290,7 @@ table_config <- function(
 #' )
 #'
 #' # Picker widget
-#' widget_col("school", "school_picker", "School", min_width = 300)
+#' widget_col("school", "search_picker", "School", min_width = 300)
 #'
 #' @importFrom rlang `%||%`
 #' @export
@@ -311,7 +312,7 @@ widget_col <- function(
   stopifnot(is.character(type), length(type) == 1L)
 
   valid_types <- c(
-    "school_picker",
+    "search_picker",
     "attendance_picker",
     "homeschool_picker",
     "notes_input",
@@ -425,11 +426,14 @@ widget_col <- function(
 }
 
 
+# ── Choice normalization ─────────────────────────────────────────────────────
+
 #' Normalize dropdown choices to list-of-lists format
 #'
 #' Converts shorthand choice formats into the canonical list-of-lists
-#' structure expected by `validate_col_spec()` and the cell renderers.
-#' Called automatically during validation, but can also be used directly.
+#' structure expected by [widget_col()] and the cell renderers.
+#' Called automatically during `widget_col()` validation for
+#' `type = "dropdown"`, but can also be used directly.
 #'
 #' Three formats are accepted:
 #' \describe{
@@ -459,6 +463,7 @@ widget_col <- function(
 #'   list(label = "Bad",  value = 1)
 #' ))
 #'
+#' @importFrom purrr map imap
 #' @export
 normalize_choices <- function(choices) {
   if (is.character(choices)) {

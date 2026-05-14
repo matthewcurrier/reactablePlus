@@ -34,7 +34,7 @@ attendance_picker_dep <- function() {
 }
 
 #' @noRd
-school_picker_dep <- function() {
+search_picker_dep <- function() {
   htmlDependency(
     name = "school-picker",
     version = "0.2.0",
@@ -117,7 +117,7 @@ useReactablePlus <- function() {
   tagList(
     popoverDep(),
     attendance_picker_dep(),
-    school_picker_dep(),
+    search_picker_dep(),
     homeschool_picker_dep(),
     notes_input_dep(),
     gear_popover_dep(),
@@ -149,7 +149,7 @@ useSchoolHistory <- function() {
 #' output$table <- renderReactable({
 #'   tbl <- reactable(data, columns = list(
 #'     school = colDef(html = TRUE, cell = function(value, index) {
-#'       as.character(schoolPickerInput("school_1", grade_key = "PK"))
+#'       as.character(searchPickerInput("school_1", grade_key = "PK"))
 #'     })
 #'   ))
 #'   bindPickersOnRender(tbl)

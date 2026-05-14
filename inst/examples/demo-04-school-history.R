@@ -1,7 +1,7 @@
 # demo-04-school-history.R
 #
 # DEMO: School History Record
-# Showcases: school_picker with server-side search, attendance_picker
+# Showcases: search_picker with server-side search, attendance_picker
 #            with default sections, homeschool_picker, notes_input,
 #            mutual exclusion (school vs homeschool), fill-down,
 #            grade badge column with custom rendering, gear toggles,
@@ -115,7 +115,7 @@ cfg <- table_config(
     # School picker — typeahead search with fill-down
     widget_col(
       "school",
-      "school_picker",
+      "search_picker",
       "School",
       min_width = 300,
       triggers_rerender = TRUE,
@@ -183,12 +183,14 @@ cfg <- table_config(
     ),
     fill_down = list(
       column = "school",
-      range_check = TRUE,
+      range_check_fn = function(row_key, value) {
+        gradeInRange(row_key, value$low_grade, value$high_grade)
+      },
       input_name = "school_fill_down"
     )
   ),
 
-  # Search wiring: tells the server which column needs useSchoolSearch()
+  # Search wiring: tells the server which column needs useTypeaheadSearch()
   search_fn_col = "school",
 
   # Grade badge column

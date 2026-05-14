@@ -1,7 +1,7 @@
 # demo-04-school-history.R
 #
 # DEMO: School History Record
-# Showcases: school_picker with server-side search, attendance_picker
+# Showcases: search_picker with server-side search, attendance_picker
 #            with default sections, homeschool_picker, notes_input,
 #            mutual exclusion (school vs homeschool), fill-down,
 #            grade badge column with custom rendering, gear toggles,
@@ -115,7 +115,7 @@ cfg <- table_config(
     # School picker — typeahead search with fill-down
     widget_col(
       "school",
-      "school_picker",
+      "search_picker",
       "School",
       min_width = 300,
       triggers_rerender = TRUE,
@@ -130,15 +130,13 @@ cfg <- table_config(
       )
     ),
 
-    # Homeschool picker — mutually exclusive with school.
-    # Hidden by default; the user opts in via the gear menu.
+    # Homeschool picker — mutually exclusive with school
     widget_col(
       "homeschool",
       "homeschool_picker",
       "Homeschool",
       width = 200,
       triggers_rerender = TRUE,
-      gear_toggle = "showHomeschool",
       options = list(
         trigger_label = "+ Mark homeschool",
         popover_title = "Homeschool details",
@@ -185,12 +183,14 @@ cfg <- table_config(
     ),
     fill_down = list(
       column = "school",
-      range_check = TRUE,
+      range_check_fn = function(row_key, value) {
+        gradeInRange(row_key, value$low_grade, value$high_grade)
+      },
       input_name = "school_fill_down"
     )
   ),
 
-  # Search wiring: tells the server which column needs useSchoolSearch()
+  # Search wiring: tells the server which column needs useTypeaheadSearch()
   search_fn_col = "school",
 
   # Grade badge column
@@ -208,11 +208,6 @@ cfg <- table_config(
 
   # Gear toggles
   gear_toggles = list(
-    showHomeschool = list(
-      label = "Show Homeschool column",
-      desc = "Add a column to mark homeschool grades and capture details.",
-      value = FALSE
-    ),
     showNCESId = list(label = "Show NCES ID", value = TRUE),
     compactRows = list(label = "Compact rows", value = FALSE)
   ),

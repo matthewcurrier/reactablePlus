@@ -24,7 +24,7 @@ runs before reactable creates its DOM.
 output$table <- renderReactable({
   tbl <- reactable(data, columns = list(
     school = colDef(html = TRUE, cell = function(value, index) {
-      as.character(schoolPickerInput("school_1", grade_key = "PK"))
+      as.character(searchPickerInput("school_1", grade_key = "PK"))
     })
   ))
   bindPickersOnRender(tbl)

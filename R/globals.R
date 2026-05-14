@@ -5,12 +5,12 @@
 utils::globalVariables(c(
   # NSE variable
   ".selected",
-  # Internal helpers called inside editable_table_server closures
   # Widget constructors called inside config_table cell renderers
+  "searchPickerInput",
   "attendancePickerInput",
   "homeschoolPickerInput",
   "notesInput",
   "gearPopoverInput",
-  # Grade utility called inside config_table_server fill-down
-  "gradeInRange"
+  # Search wiring called inside config_table_server
+  "useTypeaheadSearch"
 ))

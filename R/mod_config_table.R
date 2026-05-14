@@ -5,9 +5,6 @@
 # The module does NOT know what domain it serves — all domain logic
 # (columns, data marshaling, toolbar stats) comes from the config.
 #
-# This is the higher-level API; see editable_table_ui / editable_table_server
-# for the lower-level raw-spec module.
-#
 # SECTIONS convention:
 #   server signature: function(id, config, data_r, search_fn)
 #   return value:     list(get_data = reactive)
@@ -18,9 +15,7 @@
 #' Config-driven Editable Table UI
 #'
 #' UI function for the config-driven editable table module. Works with
-#' `table_config()` objects and picker widgets, as opposed to the
-#' lower-level `editable_table_ui()` which uses raw `row_spec`/`col_spec`
-#' lists.
+#' `table_config()` objects and picker widgets.
 #' @param id Module namespace ID.
 #' @param config A `table_config` object.
 #' @return A tagList with dependencies, toolbar, and reactable output.
@@ -120,7 +115,7 @@ config_table_ui <- function(id, config) {
 #'   (edit mode with saved rows).
 #' @param search_fn A function `(query, limit)` → data.frame for
 #'   server-side typeahead search. Required when any column uses
-#'   `school_picker` type. Default `NULL`.
+#'   `search_picker` type. Default `NULL`.
 #' @return `list(get_data = reactive)`.
 #' @export
 config_table_server <- function(
@@ -152,7 +147,7 @@ config_table_server <- function(
 
     # ── Search wiring ────────────────────────────────────────────────────
     if (!is.null(config$search_fn_col) && !is.null(search_fn)) {
-      useSchoolSearch(input, session, search_fn = search_fn)
+      useTypeaheadSearch(input, session, search_fn = search_fn)
     }
 
     # ── Context switch ───────────────────────────────────────────────────
@@ -334,13 +329,9 @@ config_table_server <- function(
             next
           }
 
-          # Range check
-          if (isTRUE(fd$range_check)) {
-            low <- school$low_grade
-            high <- school$high_grade
-            if (!is.null(low) && !is.null(high)) {
-              if (!gradeInRange(gk, low, high)) next
-            }
+          # Range check — delegate to caller-supplied predicate
+          if (!is.null(fd$range_check_fn)) {
+            if (!fd$range_check_fn(gk, school)) next
           }
 
           rs[[gk]][[fd$column]] <- school
@@ -757,7 +748,7 @@ config_table_server <- function(
 .default_validate <- function(val, type) {
   switch(
     type,
-    school_picker = {
+    search_picker = {
       if (is.list(val) && !is.null(val$id)) val else NULL
     },
     attendance_picker = ,
@@ -1163,7 +1154,7 @@ config_table_server <- function(
   col_def_args$cell <- switch(
     cs$type,
 
-    school_picker = function(value, index) {
+    search_picker = function(value, index) {
       gk <- tbl$.row_key[index]
       row <- current_rows[[gk]]
       if (!is.list(row)) {
@@ -1171,7 +1162,7 @@ config_table_server <- function(
       }
 
       opts <- cs$options
-      widget_html <- as.character(schoolPickerInput(
+      widget_html <- as.character(searchPickerInput(
         inputId = ns(paste0(cs$id, "_", gk)),
         value = row[[cs$id]],
         show_nces_id = isTRUE(

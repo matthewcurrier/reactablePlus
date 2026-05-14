@@ -20,7 +20,6 @@ reference:
       Load widget dependencies and wire picker bindings inside reactable.
     contents:
       - useReactablePlus
-      - useSchoolHistory
       - popoverDep
       - bindPickersOnRender
 
@@ -30,9 +29,9 @@ reference:
       Each widget has a Shiny input binding, so its value is available
       via `input$<id>` on the server side.
     contents:
-      - schoolPickerInput
-      - updateSchoolPickerInput
-      - useSchoolSearch
+      - searchPickerInput
+      - updateSearchPickerInput
+      - useTypeaheadSearch
       - attendancePickerInput
       - updateAttendancePickerInput
       - homeschoolPickerInput
@@ -44,40 +43,21 @@ reference:
 
   - title: "Config-Driven Table Module"
     desc: >
-      A higher-level Shiny module that renders an editable table from a
-      declarative `table_config` object. Handles widget dispatch, mutual
-      exclusion, fill-down, gear toggles, and data marshaling.
+      A Shiny module that renders an editable table from a declarative
+      `table_config` object. Handles widget dispatch, mutual exclusion,
+      fill-down, gear toggles, and data marshaling.
     contents:
       - config_table_ui
       - config_table_server
       - table_config
       - widget_col
-
-  - title: "Raw-Spec Table Module"
-    desc: >
-      A lower-level Shiny module driven by row and column definitions.
-      Supports dropdowns, numeric inputs, checkboxes, toggles,
-      date pickers, and text fields with gating, selection, and reset.
-      Use `row_def()`, `display_col()`, and `input_col()` to build
-      validated specifications.
-    contents:
-      - editable_table_ui
-      - editable_table_server
-      - row_def
-      - display_col
-      - input_col
       - normalize_choices
-      - validate_col_spec
-      - validate_row_spec
-      - validate_row_inputs
-      - collect_inputs
-      - merge_existing_data
-      - make_input_id
 
   - title: "Grade Utilities"
     desc: >
       Helper functions for working with grade-level keys (PK through 12).
-      Used by the config-driven module's fill-down logic.
+      Convenience utilities for education-domain applications; not
+      required by the core table infrastructure.
     contents:
       - gradeChoices
       - gradeLabelMap

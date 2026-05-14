@@ -26,7 +26,7 @@ the prefix for Shiny input IDs (e.g. \code{"school"} -> \code{input$school_PK}).
 \item{type}{Character. One of:
 
 \strong{Picker widgets} (complex popover-based inputs):
-\code{"school_picker"}, \code{"attendance_picker"}, \code{"homeschool_picker"},
+\code{"search_picker"}, \code{"attendance_picker"}, \code{"homeschool_picker"},
 \code{"notes_input"}.
 
 \strong{Primitive inputs} (inline HTML form controls):
@@ -44,7 +44,7 @@ the prefix for Shiny input IDs (e.g. \code{"school"} -> \code{input$school_PK}).
 \item{options}{Named list of type-specific options:
 
 \strong{Picker widgets}: passed to the widget constructor (e.g.
-\code{list(show_nces_id = TRUE)} for school picker,
+\code{list(show_nces_id = TRUE)} for search picker,
 \code{list(sections = ...)} for attendance picker).
 
 \strong{dropdown}: \code{choices} (required — character vector, named
@@ -117,6 +117,6 @@ widget_col("score", "numeric", "Score",
 )
 
 # Picker widget
-widget_col("school", "school_picker", "School", min_width = 300)
+widget_col("school", "search_picker", "School", min_width = 300)
 
 }

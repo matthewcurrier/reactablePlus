@@ -57,7 +57,7 @@ data.frame. Converts one row of state back to the output schema.}
 string for the toolbar. Pass \code{NULL} for no toolbar.}
 
 \item{search_fn_col}{Character. Column ID that requires server-side
-search (i.e. uses \code{useSchoolSearch()}). Pass \code{NULL} if no column
+search (i.e. uses \code{\link[=useTypeaheadSearch]{useTypeaheadSearch()}}). Pass \code{NULL} if no column
 needs search. Default \code{NULL}.}
 
 \item{badge_col}{Character or NULL. When non-NULL, a static label
@@ -98,9 +98,10 @@ gating) work.
 string to show in the cleared column's cell).
 
 \code{interactions$fill_down}: a list with \code{column} (column ID),
-\code{range_check} (logical), and optionally \code{input_name} (character —
-the Shiny input name the widget JS sends; defaults to
-\code{paste0(column, "_fill_down")}).
+\code{range_check_fn} (optional function \verb{(row_key, value) -> logical}
+that returns \code{TRUE} when the row is in range for fill-down), and
+optionally \code{input_name} (character — the Shiny input name the
+widget JS sends; defaults to \code{paste0(column, "_fill_down")}).
 }
 
 \subsection{Gating}{
@@ -117,7 +118,7 @@ cfg <- table_config(
   row_keys   = c("PK", "K", "01"),
   row_labels = c("PreK", "K", "1st"),
   columns    = list(
-    widget_col("school", "school_picker", "School", min_width = 300),
+    widget_col("school", "search_picker", "School", min_width = 300),
     widget_col("attendance", "attendance_picker", "Attendance", width = 200)
   ),
   badge_col = "grade",
