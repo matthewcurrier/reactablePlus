@@ -137,6 +137,7 @@ cfg <- table_config(
       "Homeschool",
       width = 200,
       triggers_rerender = TRUE,
+      gear_toggle = "showHomeschool",
       options = list(
         trigger_label = "+ Mark homeschool",
         popover_title = "Homeschool details",
@@ -209,6 +210,7 @@ cfg <- table_config(
   # Gear toggles
   gear_toggles = list(
     showNCESId = list(label = "Show NCES ID", value = TRUE),
+    showHomeschool = list(label = "Show Homeschool", value = FALSE),
     compactRows = list(label = "Compact rows", value = FALSE)
   ),
 
