@@ -1,14 +1,7 @@
 ---
-title: "Grade Entry with config_table"
-format:
-  html:
-    code-copy: true
-knitr:
-  opts_chunk:
-    collapse: true
-    comment: "#>"
+title: "Using config_table with reactablePlus"
+output: rmarkdown::html_vignette
 ---
-
 This article walks through a practical use case for `config_table`:
 a student grade entry form backed by a SQLite database. We define
 the table declaratively with `table_config()` and `widget_col()`,

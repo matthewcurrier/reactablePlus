@@ -1,11 +1,6 @@
 ---
 title: "Getting Started with reactablePlus"
-execute:
-  eval: false
-knitr:
-  opts_chunk:
-    collapse: true
-    comment: "#>"
+output: rmarkdown::html_vignette
 ---
 
 
