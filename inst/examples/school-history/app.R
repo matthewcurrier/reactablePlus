@@ -20,29 +20,69 @@ library(reactable)
 # In production this would query a real database (e.g., NCES school data).
 
 fake_schools <- data.frame(
-  id            = c("S001", "S002", "S003", "S004", "S005",
-                    "S006", "S007", "S008", "S009", "S010"),
-  name          = c("Lincoln Elementary", "Washington Middle School",
-                    "Jefferson High School", "Roosevelt Academy",
-                    "Adams Charter School", "Madison Preparatory",
-                    "Monroe STEM Academy", "Jackson Arts Magnet",
-                    "Harrison International", "Tyler Montessori"),
-  district      = c("Springfield USD", "Springfield USD",
-                    "Springfield USD", "Capital City Schools",
-                    "Capital City Schools", "Westside District",
-                    "Westside District", "Eastside ISD",
-                    "Eastside ISD", "Northgate Schools"),
-  city          = c("Springfield", "Springfield", "Springfield",
-                    "Capital City", "Capital City", "Westville",
-                    "Westville", "Eastburg", "Eastburg", "Northgate"),
-  state         = c("IL", "IL", "IL", "IL", "IL",
-                    "IL", "IL", "IL", "IL", "IL"),
-  type          = c("Public", "Public", "Public", "Public", "Charter",
-                    "Private", "Public", "Public", "Public", "Private"),
-  low_grade     = c("PK", "06", "09", "PK", "K",
-                    "06", "K",  "06", "PK", "PK"),
-  high_grade    = c("05", "08", "12", "12", "08",
-                    "12", "05", "12", "12", "05"),
+  id = c(
+    "S001",
+    "S002",
+    "S003",
+    "S004",
+    "S005",
+    "S006",
+    "S007",
+    "S008",
+    "S009",
+    "S010"
+  ),
+  name = c(
+    "Lincoln Elementary",
+    "Washington Middle School",
+    "Jefferson High School",
+    "Roosevelt Academy",
+    "Adams Charter School",
+    "Madison Preparatory",
+    "Monroe STEM Academy",
+    "Jackson Arts Magnet",
+    "Harrison International",
+    "Tyler Montessori"
+  ),
+  district = c(
+    "Springfield USD",
+    "Springfield USD",
+    "Springfield USD",
+    "Capital City Schools",
+    "Capital City Schools",
+    "Westside District",
+    "Westside District",
+    "Eastside ISD",
+    "Eastside ISD",
+    "Northgate Schools"
+  ),
+  city = c(
+    "Springfield",
+    "Springfield",
+    "Springfield",
+    "Capital City",
+    "Capital City",
+    "Westville",
+    "Westville",
+    "Eastburg",
+    "Eastburg",
+    "Northgate"
+  ),
+  state = c("IL", "IL", "IL", "IL", "IL", "IL", "IL", "IL", "IL", "IL"),
+  type = c(
+    "Public",
+    "Public",
+    "Public",
+    "Public",
+    "Charter",
+    "Private",
+    "Public",
+    "Public",
+    "Public",
+    "Private"
+  ),
+  low_grade = c("PK", "06", "09", "PK", "K", "06", "K", "06", "PK", "PK"),
+  high_grade = c("05", "08", "12", "12", "08", "12", "05", "12", "12", "05"),
   stringsAsFactors = FALSE
 )
 
@@ -51,8 +91,8 @@ search_schools <- function(query, limit = 25L) {
   query_lower <- tolower(query)
   matches <- fake_schools[
     grepl(query_lower, tolower(fake_schools$name)) |
-    grepl(query_lower, tolower(fake_schools$district)) |
-    grepl(query_lower, tolower(fake_schools$city)),
+      grepl(query_lower, tolower(fake_schools$district)) |
+      grepl(query_lower, tolower(fake_schools$city)),
   ]
   head(matches, limit)
 }
@@ -61,57 +101,71 @@ search_schools <- function(query, limit = 25L) {
 # ── Grade setup ─────────────────────────────────────────────────────────────
 
 grades <- gradeChoices()
-grade_keys  <- unname(grades)
+grade_keys <- unname(grades)
 grade_labels <- names(grades)
 
 
 # ── Config ──────────────────────────────────────────────────────────────────
 
 cfg <- table_config(
-  row_keys   = grade_keys,
+  row_keys = grade_keys,
   row_labels = grade_labels,
 
   columns = list(
     # School picker — typeahead search with fill-down
-    widget_col("school", "school_picker", "School",
+    widget_col(
+      "school",
+      "school_picker",
+      "School",
       min_width = 300,
       triggers_rerender = TRUE,
       options = list(
-        show_nces_id       = TRUE,
-        trigger_label      = "+ Pick school",
-        popover_title      = "Find school",
-        show_fill_down     = TRUE,
+        show_nces_id = TRUE,
+        trigger_label = "+ Pick school",
+        popover_title = "Find school",
+        show_fill_down = TRUE,
         search_placeholder = "Search by name, city, or district\u2026",
-        empty_hint         = "Type 2+ characters to search schools",
-        no_match_hint      = "No schools found. Try a different search."
+        empty_hint = "Type 2+ characters to search schools",
+        no_match_hint = "No schools found. Try a different search."
       )
     ),
 
-    # Homeschool picker — mutually exclusive with school
-    widget_col("homeschool", "homeschool_picker", "Homeschool",
+    # Homeschool picker — mutually exclusive with school.
+    # Hidden by default; the user opts in via the gear menu.
+    widget_col(
+      "homeschool",
+      "homeschool_picker",
+      "Homeschool",
       width = 200,
       triggers_rerender = TRUE,
+      gear_toggle = "showHomeschool",
       options = list(
-        trigger_label     = "+ Mark homeschool",
-        popover_title     = "Homeschool details",
-        show_curriculum   = TRUE,
-        show_notes        = TRUE
+        trigger_label = "+ Mark homeschool",
+        popover_title = "Homeschool details",
+        show_curriculum = TRUE,
+        show_notes = TRUE
       )
     ),
 
     # Attendance picker — default school attendance sections
-    widget_col("attendance", "attendance_picker", "Attendance",
+    widget_col(
+      "attendance",
+      "attendance_picker",
+      "Attendance",
       width = 220,
       options = list(
-        trigger_label     = "+ Mark attendance",
-        popover_title     = "Attendance",
-        show_notes        = TRUE,
+        trigger_label = "+ Mark attendance",
+        popover_title = "Attendance",
+        show_notes = TRUE,
         notes_placeholder = "Absences, tardies, context\u2026"
       )
     ),
 
     # Notes — free-form teacher notes
-    widget_col("notes", "notes_input", "Notes",
+    widget_col(
+      "notes",
+      "notes_input",
+      "Notes",
       min_width = 150,
       options = list(
         placeholder = "Optional notes\u2026"
@@ -122,15 +176,17 @@ cfg <- table_config(
   # Mutual exclusion: picking a homeschool clears the school, and vice versa
   interactions = list(
     mutual_exclusion = list(
-      list(when_on = "homeschool", clears = "school",
-           display = '<span style="opacity:0.5; font-style:italic;">homeschooled</span>'),
-      list(when_on = "school", clears = "homeschool",
-           display = "")
+      list(
+        when_on = "homeschool",
+        clears = "school",
+        display = '<span style="opacity:0.5; font-style:italic;">homeschooled</span>'
+      ),
+      list(when_on = "school", clears = "homeschool", display = "")
     ),
     fill_down = list(
-      column      = "school",
+      column = "school",
       range_check = TRUE,
-      input_name  = "school_fill_down"
+      input_name = "school_fill_down"
     )
   ),
 
@@ -138,7 +194,7 @@ cfg <- table_config(
   search_fn_col = "school",
 
   # Grade badge column
-  badge_col   = "grade",
+  badge_col = "grade",
   badge_label = "Grade",
   badge_render_fn = function(row_key, row_label) {
     css_class <- paste0("grade-badge g-", row_key)
@@ -152,6 +208,11 @@ cfg <- table_config(
 
   # Gear toggles
   gear_toggles = list(
+    showHomeschool = list(
+      label = "Show Homeschool column",
+      desc = "Add a column to mark homeschool grades and capture details.",
+      value = FALSE
+    ),
     showNCESId = list(label = "Show NCES ID", value = TRUE),
     compactRows = list(label = "Compact rows", value = FALSE)
   ),
@@ -164,25 +225,46 @@ cfg <- table_config(
     }))
     shiny::HTML(sprintf(
       '<span style="font-size: 0.85em; color: var(--color-text-secondary, #666);">%d / %d grades completed</span>',
-      filled, length(row_keys)
+      filled,
+      length(row_keys)
     ))
   },
 
   # Output marshaling
   to_output_fn = function(row_state, row_key) {
     sch <- row_state$school
-    hs  <- row_state$homeschool
+    hs <- row_state$homeschool
     att <- row_state$attendance
 
     data.frame(
-      grade_key   = row_key,
-      school_name = if (is.list(sch)) sch$name %||% NA_character_ else NA_character_,
-      school_id   = if (is.list(sch)) sch$id %||% NA_character_ else NA_character_,
-      homeschool  = !is.null(hs),
-      hs_provider = if (is.list(hs)) hs$by %||% NA_character_ else NA_character_,
-      att_school  = if (is.list(att)) att$school %||% NA_character_ else NA_character_,
-      att_class   = if (is.list(att)) att$class_ %||% NA_character_ else NA_character_,
-      notes       = row_state$notes %||% "",
+      grade_key = row_key,
+      school_name = if (is.list(sch)) {
+        sch$name %||% NA_character_
+      } else {
+        NA_character_
+      },
+      school_id = if (is.list(sch)) {
+        sch$id %||% NA_character_
+      } else {
+        NA_character_
+      },
+      homeschool = !is.null(hs),
+      hs_provider = if (is.list(hs)) {
+        hs$by %||% NA_character_
+      } else {
+        NA_character_
+      },
+      att_school = if (is.list(att)) {
+        att$school %||% NA_character_
+      } else {
+        NA_character_
+      },
+      att_class = if (is.list(att)) {
+        att$class_ %||% NA_character_
+      } else {
+        NA_character_
+      },
+      notes = row_state$notes %||% "",
       stringsAsFactors = FALSE
     )
   }
@@ -194,7 +276,8 @@ cfg <- table_config(
 ui <- fluidPage(
   theme = bslib::bs_theme(version = 5),
 
-  tags$style(HTML("
+  tags$style(HTML(
+    "
     .is-homeschool {
       background-color: rgba(200, 220, 255, 0.2) !important;
     }
@@ -207,10 +290,12 @@ ui <- fluidPage(
       background-color: #e8e8e8;
       color: #444;
     }
-  ")),
+  "
+  )),
 
   titlePanel("School History Record"),
-  p(class = "text-muted",
+  p(
+    class = "text-muted",
     "Complete school history tracker for PreK\u201312. Search and pick",
     "schools (with fill-down), mark homeschool years (mutually exclusive",
     "with school), record attendance, and add notes. Use the gear icon",
@@ -227,17 +312,20 @@ ui <- fluidPage(
 # ── Server ──────────────────────────────────────────────────────────────────
 
 server <- function(input, output, session) {
-  result <- config_table_server("history", cfg,
-    search_fn = search_schools
-  )
+  result <- config_table_server("history", cfg, search_fn = search_schools)
 
   output$output_tbl <- renderReactable({
     df <- result$get_data()
     if (nrow(df) == 0L) {
       return(reactable(data.frame(note = "Fill in the history above")))
     }
-    reactable(df, bordered = TRUE, striped = TRUE, compact = TRUE,
-              defaultPageSize = 14)
+    reactable(
+      df,
+      bordered = TRUE,
+      striped = TRUE,
+      compact = TRUE,
+      defaultPageSize = 14
+    )
   })
 }
 

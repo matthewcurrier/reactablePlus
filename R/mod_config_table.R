@@ -62,12 +62,44 @@ config_table_ui <- function(id, config) {
     )
   }
 
+  # Columns that are gear-toggled: generate CSS rules + initial hide
+  # classes so column visibility can be toggled without a full re-render.
+  gear_toggled_cols <- purrr::keep(config$columns, ~ !is.null(.x$gear_toggle))
+
+  gear_css <- if (length(gear_toggled_cols) > 0L) {
+    rules <- purrr::map_chr(gear_toggled_cols, function(cs) {
+      sprintf(
+        ".hide-col-%s .gear-col-%s { display: none !important; }",
+        cs$gear_toggle,
+        cs$gear_toggle
+      )
+    })
+    shiny::tags$style(shiny::HTML(paste(rules, collapse = "\n")))
+  }
+
+  initial_hide_classes <- purrr::map_chr(
+    purrr::keep(gear_toggled_cols, function(cs) {
+      !isTRUE(config$gear_toggles[[cs$gear_toggle]]$value)
+    }),
+    function(cs) paste0("hide-col-", cs$gear_toggle)
+  )
+
+  container_class <- paste(
+    c("rp-table-container", initial_hide_classes),
+    collapse = " "
+  )
+
   shiny::tagList(
     useReactablePlus(),
+    gear_css,
     bslib::card(
       bslib::card_body(
         toolbar,
-        reactable::reactableOutput(ns("table"))
+        shiny::tags$div(
+          id = ns("table-container"),
+          class = container_class,
+          reactable::reactableOutput(ns("table"))
+        )
       )
     )
   )
@@ -162,12 +194,43 @@ config_table_server <- function(
     # reactive invalidation regardless of value equality, which
     # causes a spurious re-render ~1 s after page load that destroys
     # any popover the user opened in that window.
+    #
+    # Column-visibility toggles (those referenced by a column's
+    # gear_toggle field) are handled via CSS class toggle on the
+    # container div — no re-render needed. Content/style toggles
+    # (e.g. showNCESId, compactRows) still increment render_key.
+    col_vis_toggles <- unique(purrr::map_chr(
+      purrr::keep(config$columns, ~ !is.null(.x$gear_toggle)),
+      "gear_toggle"
+    ))
+
     prev_gear <- shiny::reactiveVal(NULL)
     shiny::observe({
       g <- gear()
       old_g <- shiny::isolate(prev_gear())
       if (!is.null(old_g) && !identical(old_g, g)) {
-        render_key(render_key() + 1L)
+        changed_keys <- names(g)[
+          !purrr::map2_lgl(g[names(g)], old_g[names(g)], identical)
+        ]
+
+        # Column-visibility toggles → CSS class on container (no flicker)
+        vis_changed <- intersect(changed_keys, col_vis_toggles)
+        purrr::walk(vis_changed, function(key) {
+          session$sendCustomMessage(
+            "rp_toggle_gear_column",
+            list(
+              container_id = ns("table-container"),
+              toggle_key = key,
+              visible = isTRUE(g[[key]])
+            )
+          )
+        })
+
+        # Content/style toggles → full re-render (unavoidable)
+        content_changed <- setdiff(changed_keys, col_vis_toggles)
+        if (length(content_changed) > 0L) {
+          render_key(render_key() + 1L)
+        }
       }
       prev_gear(g)
     })
@@ -189,7 +252,8 @@ config_table_server <- function(
       input = input,
       rows = rows,
       render_key = render_key,
-      config = config
+      config = config,
+      session = session
     )
 
     # ── Year input observer ──────────────────────────────────────────────
@@ -245,39 +309,96 @@ config_table_server <- function(
 
         fill_keys <- ROW_KEYS[seq_along(ROW_KEYS) > from_idx]
 
-        rs <- purrr::reduce(
-          fill_keys,
-          function(acc, gk) {
-            r <- acc[[gk]]
-            if (!is.list(r)) {
-              return(acc)
-            }
-            if (!is.null(r[[fd$column]])) {
-              return(acc)
-            }
+        # Track which row keys actually received a fill, so we can push
+        # the new value to each picker via sendInputMessage afterwards.
+        # This is necessary because reactable's React reconciliation will
+        # SKIP updating a cell when the emitted HTML string is identical
+        # to the previous render — which happens for any cell the user
+        # locally cleared (popover.render() mutated the DOM but the
+        # cell's data-initial-value attribute is unchanged). Without
+        # this push, the picker's stale empty state persists even
+        # though rs is updated correctly.
+        filled_keys <- character(0)
 
-            # Skip if any mutual-exclusion column is active
-            me_active <- purrr::some(me_cols, ~ !is.null(r[[.x]]))
-            if (me_active) {
-              return(acc)
-            }
+        for (gk in fill_keys) {
+          r <- rs[[gk]]
+          if (!is.list(r)) {
+            next
+          }
+          if (!is.null(r[[fd$column]])) {
+            next
+          }
 
-            # Range check
-            if (isTRUE(fd$range_check)) {
-              low <- school$low_grade
-              high <- school$high_grade
-              if (!is.null(low) && !is.null(high)) {
-                if (!gradeInRange(gk, low, high)) return(acc)
-              }
-            }
+          # Skip if any mutual-exclusion column is active
+          if (purrr::some(me_cols, ~ !is.null(r[[.x]]))) {
+            next
+          }
 
-            acc[[gk]][[fd$column]] <- school
-            acc
-          },
-          .init = rs
-        )
+          # Range check
+          if (isTRUE(fd$range_check)) {
+            low <- school$low_grade
+            high <- school$high_grade
+            if (!is.null(low) && !is.null(high)) {
+              if (!gradeInRange(gk, low, high)) next
+            }
+          }
+
+          rs[[gk]][[fd$column]] <- school
+          filled_keys <- c(filled_keys, gk)
+        }
+
         rows(rs)
-        render_key(render_key() + 1L)
+
+        # Push the new value into each filled picker's JS state. The
+        # picker's receiveMessage handler will call setValue + render(),
+        # bringing the visible DOM in sync with the server state.
+        purrr::walk(filled_keys, function(gk) {
+          session$sendInputMessage(
+            paste0(fd$column, "_", gk),
+            list(value = school)
+          )
+        })
+
+        # Update displacement + row class for filled rows (in case
+        # fill-down's effect flips any mutual exclusion or row class).
+        new_rs <- rs
+        all_me_rules <- config$interactions$mutual_exclusion %||% list()
+
+        purrr::walk(filled_keys, function(gk) {
+          new_row <- new_rs[[gk]]
+
+          # Displacement
+          purrr::walk(all_me_rules, function(rule) {
+            cell_key <- ns(paste0(rule$clears, "-", gk))
+            is_displaced <- !is.null(new_row[[rule$when_on]])
+            session$sendCustomMessage(
+              "rp_set_displaced",
+              list(cell_key = cell_key, displaced = is_displaced)
+            )
+          })
+
+          # Row class
+          if (!is.null(config$row_class_fn)) {
+            new_class <- tryCatch(
+              config$row_class_fn(gk, new_row),
+              error = function(e) NULL
+            )
+            session$sendCustomMessage(
+              "rp_set_row_class",
+              list(
+                row_key = ns(gk),
+                new_class = paste(
+                  as.character(new_class %||% ""),
+                  collapse = " "
+                )
+              )
+            )
+          }
+        })
+
+        # No render_key increment — the in-place updates above keep the
+        # DOM in sync. A full re-render would just trigger React's
+        # reconciliation, which skips cells with unchanged HTML anyway.
       })
     }
 
@@ -346,25 +467,28 @@ config_table_server <- function(
         rowClass = function(index) {
           gk <- tbl[[1]][index]
           row <- current_rows[[gk]]
-          if (!is.list(row)) {
-            return(NULL)
-          }
 
-          # User-supplied row class takes precedence
-          if (!is.null(config$row_class_fn)) {
-            return(config$row_class_fn(gk, row))
-          }
+          # Marker class so JS message handlers can find this row for
+          # in-place class updates (e.g. toggling "is-homeschool" after
+          # mutual exclusion fires) without re-rendering the table.
+          marker <- paste0("rp-row-", ns(gk))
 
-          # Fallback: apply "me-active" class when any mutual-exclusion
-          # column is active (backward compatible with existing CSS)
-          if (
+          user_class <- if (!is.list(row)) {
+            NULL
+          } else if (!is.null(config$row_class_fn)) {
+            config$row_class_fn(gk, row)
+          } else if (
             length(me_cols) > 0L &&
               purrr::some(me_cols, ~ !is.null(row[[.x]]))
           ) {
+            # Fallback: apply "me-active" class when any mutual-exclusion
+            # column is active (backward compatible with existing CSS)
             "me-active"
           } else {
             NULL
           }
+
+          paste(c(marker, user_class), collapse = " ")
         }
       )
 
@@ -479,6 +603,25 @@ config_table_server <- function(
 
 
 #' Wire observers for a single column spec across all row keys.
+#'
+#' Each observer responds to a single cell's value change. After updating
+#' the row state and applying any mutual-exclusion clearing, the observer
+#' sends targeted in-place update messages to the client so the table
+#' mutates without a full re-render:
+#'
+#'   - `sendInputMessage(cleared_input_id, list(value = NULL))` updates
+#'     a sibling widget that was cleared by mutual exclusion.
+#'   - `rp_set_displaced` toggles the active vs. displaced display on
+#'     any cell that has a mutual-exclusion rule targeting it.
+#'   - `rp_set_row_class` updates the row's user-supplied custom class
+#'     (e.g. "is-homeschool") from `row_class_fn`.
+#'
+#' `render_key` is only incremented when a structural change is needed
+#' that the in-place mechanism cannot express (currently: never, since
+#' mutual exclusion + row class + value updates are all handled by the
+#' targeted messages). Gear toggles and fill-down still increment
+#' `render_key` from their own observers.
+#'
 #' @noRd
 .wire_column_observers <- function(
   cs,
@@ -486,8 +629,26 @@ config_table_server <- function(
   input,
   rows,
   render_key,
-  config
+  config,
+  session
 ) {
+  ns <- session$ns
+
+  # Pre-compute the mutual-exclusion rules where this column is the
+  # trigger (`when_on`). When this column changes, those rules dictate
+  # which sibling cell gets cleared + which sibling cells need their
+  # displaced display flipped.
+  me_rules_triggered_by_this <- Filter(
+    function(rule) rule$when_on == cs$id,
+    config$interactions$mutual_exclusion %||% list()
+  )
+
+  # All mutual-exclusion rules — needed to recompute displacement for
+  # every column whose own rendering can be displaced by some other
+  # column. After this column's value changes, we re-evaluate every
+  # rule on this row to keep the displacement state in sync.
+  all_me_rules <- config$interactions$mutual_exclusion %||% list()
+
   # Each row key gets its own observer
   purrr::walk(row_keys, function(local_gk) {
     local_cs <- cs
@@ -509,33 +670,79 @@ config_table_server <- function(
         old_val <- rs[[local_gk]][[local_cs$id]]
         rs[[local_gk]][[local_cs$id]] <- new_val
 
-        # Mutual exclusion: if this column turned ON, clear the target
-        purrr::walk(
-          config$interactions$mutual_exclusion %||% list(),
-          function(rule) {
-            if (rule$when_on == local_cs$id) {
-              if (!is.null(new_val) && is.null(old_val)) {
-                rs[[local_gk]][[rule$clears]] <<- NULL
-              }
+        # ── Mutual exclusion: clear the target column when this column
+        # turns ON (null → non-null transition). Records which sibling
+        # widgets were cleared so we can also send them sendInputMessage.
+        #
+        # NOTE: we use a `for` loop here, not purrr::walk / purrr::map.
+        # R's copy-on-modify semantics mean `rs[[...]] <- NULL` inside
+        # an anonymous function modifies a LOCAL copy of rs — the outer
+        # rs (the one written back via rows(rs)) would be unchanged.
+        # The for-loop runs in this handler's scope, so rs mutations
+        # are visible to rows(rs).
+        cleared_cols <- character(0)
+        if (!is.null(new_val) && is.null(old_val)) {
+          for (rule in me_rules_triggered_by_this) {
+            if (!is.null(rs[[local_gk]][[rule$clears]])) {
+              rs[[local_gk]][[rule$clears]] <- NULL
+              cleared_cols <- c(cleared_cols, rule$clears)
             }
           }
-        )
+        }
 
         rows(rs)
 
-        if (isTRUE(local_cs$triggers_rerender)) {
-          # Only re-render when the column's presence state changes
-          # (NULL ↔ non-NULL). Editing within a filled column (e.g.,
-          # changing provider, typing notes) does NOT need a re-render —
-          # the widget handles its own display. This prevents flicker
-          # on every keystroke or detail change.
-          was_empty <- is.null(old_val)
-          now_empty <- is.null(new_val)
-          presence_changed <- was_empty != now_empty
+        # ── Send targeted in-place updates ───────────────────────────
+        # The popover widgets handle their OWN cell's display via the
+        # local Popover.render() call inside close(). What we still
+        # need to push to the client:
+        #
+        #   1. Clear any sibling widget that mutual exclusion just
+        #      cleared (so the cell shows its empty state instead of
+        #      the now-stale filled state).
+        #   2. Recompute the displacement state for every cell on
+        #      this row that could be displaced by ANY mutual
+        #      exclusion rule, since this column's change may have
+        #      flipped displacement on or off for siblings.
+        #   3. Recompute the row's user-supplied custom class via
+        #      row_class_fn (so e.g. "is-homeschool" is added/removed).
 
-          if (presence_changed) {
-            render_key(render_key() + 1L)
-          }
+        new_row <- rs[[local_gk]]
+
+        # 1. Clear cleared widgets
+        purrr::walk(cleared_cols, function(cleared_col_id) {
+          session$sendInputMessage(
+            paste0(cleared_col_id, "_", local_gk),
+            list(value = NULL)
+          )
+        })
+
+        # 2. Update displacement state on every cell that has a rule
+        #    targeting it. The displacement state of a cell whose
+        #    rule says "when_on=X, clears=Y" is determined by whether
+        #    X is currently non-null on this row.
+        purrr::walk(all_me_rules, function(rule) {
+          cell_key <- ns(paste0(rule$clears, "-", local_gk))
+          is_displaced <- !is.null(new_row[[rule$when_on]])
+          session$sendCustomMessage(
+            "rp_set_displaced",
+            list(cell_key = cell_key, displaced = is_displaced)
+          )
+        })
+
+        # 3. Update row custom class
+        if (!is.null(config$row_class_fn)) {
+          new_class <- tryCatch(
+            config$row_class_fn(local_gk, new_row),
+            error = function(e) NULL
+          )
+          session$sendCustomMessage(
+            "rp_set_row_class",
+            list(
+              row_key = ns(local_gk),
+              new_class = paste(as.character(new_class %||% ""), collapse = " ")
+            )
+          )
         }
       },
       ignoreNULL = FALSE,
@@ -686,9 +893,10 @@ config_table_server <- function(
 
   # Column values — primitive types get real values (enables sorting/filtering),
   # complex widget types get empty placeholders (cell fns render from current_rows).
-  visible_cols <- purrr::keep(config$columns, function(cs) {
-    is.null(cs$gear_toggle) || isTRUE(settings[[cs$gear_toggle]])
-  })
+  # Column values — always include ALL columns (gear-toggled visibility
+  # is handled by CSS, not by omitting from the data frame).
+  # Primitive types get real values (enables sorting/filtering),
+  # complex widget types get empty placeholders (cell fns render from current_rows).
 
   primitive_types <- c(
     "dropdown",
@@ -701,7 +909,7 @@ config_table_server <- function(
   )
 
   tbl <- purrr::reduce(
-    visible_cols,
+    config$columns,
     function(acc, cs) {
       if (cs$type %in% primitive_types) {
         acc[[cs$id]] <- .extract_col_values(current_rows, cs)
@@ -869,19 +1077,65 @@ config_table_server <- function(
     }
   }
 
-  # Widget columns
-  visible_cols <- purrr::keep(config$columns, function(cs) {
-    is.null(cs$gear_toggle) || isTRUE(settings[[cs$gear_toggle]])
-  })
-
-  widget_defs <- purrr::map(visible_cols, function(cs) {
+  # Widget columns — always include ALL columns, including gear-toggled
+  # ones. Column visibility is handled by CSS classes on the container
+  # div (e.g. .hide-col-showHomeschool), not by omitting the column from
+  # the reactable definition. This lets us toggle column visibility
+  # without a full re-render.
+  widget_defs <- purrr::map(config$columns, function(cs) {
     .build_widget_coldef(cs, ns, current_rows, settings, tbl, config)
   }) |>
-    purrr::set_names(purrr::map_chr(visible_cols, "id"))
+    purrr::set_names(purrr::map_chr(config$columns, "id"))
 
   col_defs <- c(col_defs, widget_defs)
 
   col_defs
+}
+
+
+#' Wrap a picker cell's HTML so it can be toggled between its active
+#' widget and a mutual-exclusion display without a table re-render.
+#'
+#' Emits:
+#'   <div class="rp-cell-wrap" data-rp-cell="{ns_key}" data-rp-displaced="{init}">
+#'     <div class="rp-cell-active">{widget_html}</div>
+#'     <div class="rp-cell-displaced">{displaced_html}</div>
+#'   </div>
+#'
+#' If there is no me_rule for this cell, the displaced div is empty
+#' and data-rp-displaced is always "false" — the wrap is still emitted
+#' for consistency but has no visual effect.
+#'
+#' @param widget_html Character. Pre-rendered active widget HTML.
+#' @param me_rules   List of mutual-exclusion rules targeting this column.
+#' @param row        Current row state (list).
+#' @param ns_cell_key Character. Namespaced cell key, e.g. "history-school-PK".
+#' @return Character HTML for the wrapped cell.
+#' @noRd
+.wrap_cell <- function(widget_html, me_rules, row, ns_cell_key) {
+  active_rule <- purrr::detect(me_rules, ~ !is.null(row[[.x$when_on]]))
+  is_displaced <- !is.null(active_rule)
+  displaced_html <- if (is_displaced) {
+    active_rule$display %||% ""
+  } else if (length(me_rules) > 0L) {
+    # Pre-render the first rule's display so JS can flip into it later
+    me_rules[[1]]$display %||% ""
+  } else {
+    ""
+  }
+
+  sprintf(
+    paste0(
+      '<div class="rp-cell-wrap" data-rp-cell="%s" data-rp-displaced="%s">',
+      '<div class="rp-cell-active">%s</div>',
+      '<div class="rp-cell-displaced">%s</div>',
+      "</div>"
+    ),
+    htmltools::htmlEscape(ns_cell_key, attribute = TRUE),
+    if (is_displaced) "true" else "false",
+    widget_html,
+    displaced_html
+  )
 }
 
 
@@ -916,14 +1170,8 @@ config_table_server <- function(
         row <- list()
       }
 
-      # Mutual exclusion: if the triggering column is active, show its display
-      active_rule <- purrr::detect(me_rules, ~ !is.null(row[[.x$when_on]]))
-      if (!is.null(active_rule)) {
-        return(active_rule$display %||% "")
-      }
-
       opts <- cs$options
-      as.character(schoolPickerInput(
+      widget_html <- as.character(schoolPickerInput(
         inputId = ns(paste0(cs$id, "_", gk)),
         value = row[[cs$id]],
         show_nces_id = isTRUE(
@@ -939,16 +1187,25 @@ config_table_server <- function(
         no_match_hint = opts$no_match_hint,
         show_fill_down = opts$show_fill_down %||% TRUE
       ))
+      .wrap_cell(
+        widget_html,
+        me_rules,
+        row,
+        ns_cell_key = ns(paste0(cs$id, "-", gk))
+      )
     },
 
     attendance_picker = function(value, index) {
       gk <- tbl$.row_key[index]
       row <- current_rows[[gk]]
+      if (!is.list(row)) {
+        row <- list()
+      }
 
       opts <- cs$options
-      as.character(attendancePickerInput(
+      widget_html <- as.character(attendancePickerInput(
         inputId = ns(paste0(cs$id, "_", gk)),
-        value = if (is.list(row)) row[[cs$id]] else NULL,
+        value = row[[cs$id]],
         grade_label = config$label_map[[gk]],
         sections = opts$sections,
         trigger_label = opts$trigger_label,
@@ -956,16 +1213,25 @@ config_table_server <- function(
         show_notes = opts$show_notes %||% TRUE,
         notes_placeholder = opts$notes_placeholder
       ))
+      .wrap_cell(
+        widget_html,
+        me_rules,
+        row,
+        ns_cell_key = ns(paste0(cs$id, "-", gk))
+      )
     },
 
     homeschool_picker = function(value, index) {
       gk <- tbl$.row_key[index]
       row <- current_rows[[gk]]
+      if (!is.list(row)) {
+        row <- list()
+      }
 
       opts <- cs$options
-      as.character(homeschoolPickerInput(
+      widget_html <- as.character(homeschoolPickerInput(
         inputId = ns(paste0(cs$id, "_", gk)),
-        value = if (is.list(row)) row[[cs$id]] else NULL,
+        value = row[[cs$id]],
         grade_label = config$label_map[[gk]],
         grade_key = gk,
         ns = ns(""),
@@ -983,6 +1249,12 @@ config_table_server <- function(
         filled_pill_label = opts$filled_pill_label,
         clear_label = opts$clear_label
       ))
+      .wrap_cell(
+        widget_html,
+        me_rules,
+        row,
+        ns_cell_key = ns(paste0(cs$id, "-", gk))
+      )
     },
 
     notes_input = function(value, index) {
@@ -1244,6 +1516,14 @@ config_table_server <- function(
     # Fallback
     function(value, index) as.character(value)
   )
+
+  # Add CSS class markers for gear-toggled columns so the generated
+  # .hide-col-{toggle} CSS rule can target both header and body cells.
+  if (!is.null(cs$gear_toggle)) {
+    gear_class <- paste0("gear-col-", cs$gear_toggle)
+    col_def_args$class <- gear_class
+    col_def_args$headerClass <- gear_class
+  }
 
   do.call(reactable::colDef, col_def_args)
 }

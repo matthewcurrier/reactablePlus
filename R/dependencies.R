@@ -15,10 +15,10 @@ NULL
 #' @export
 popoverDep <- function() {
   htmlDependency(
-    name    = "popover-core",
+    name = "popover-core",
     version = "0.2.0",
-    src     = system.file("assets", package = "reactablePlus"),
-    script  = "js/popover-core.js",
+    src = system.file("assets", package = "reactablePlus"),
+    script = "js/popover-core.js",
     stylesheet = "css/popover-core.css"
   )
 }
@@ -26,20 +26,20 @@ popoverDep <- function() {
 #' @noRd
 attendance_picker_dep <- function() {
   htmlDependency(
-    name    = "attendance-picker",
+    name = "attendance-picker",
     version = "0.2.0",
-    src     = system.file("assets", package = "reactablePlus"),
-    script  = "js/attendance-picker-binding.js"
+    src = system.file("assets", package = "reactablePlus"),
+    script = "js/attendance-picker-binding.js"
   )
 }
 
 #' @noRd
 school_picker_dep <- function() {
   htmlDependency(
-    name    = "school-picker",
+    name = "school-picker",
     version = "0.2.0",
-    src     = system.file("assets", package = "reactablePlus"),
-    script  = "js/school-picker-binding.js",
+    src = system.file("assets", package = "reactablePlus"),
+    script = "js/school-picker-binding.js",
     stylesheet = "css/school-picker.css"
   )
 }
@@ -47,31 +47,44 @@ school_picker_dep <- function() {
 #' @noRd
 homeschool_picker_dep <- function() {
   htmlDependency(
-    name    = "homeschool-picker",
+    name = "homeschool-picker",
     version = "0.2.0",
-    src     = system.file("assets", package = "reactablePlus"),
-    script  = "js/homeschool-picker-binding.js"
+    src = system.file("assets", package = "reactablePlus"),
+    script = "js/homeschool-picker-binding.js"
   )
 }
 
 #' @noRd
 notes_input_dep <- function() {
   htmlDependency(
-    name    = "notes-input",
+    name = "notes-input",
     version = "0.2.0",
-    src     = system.file("assets", package = "reactablePlus"),
-    script  = "js/notes-input-binding.js"
+    src = system.file("assets", package = "reactablePlus"),
+    script = "js/notes-input-binding.js"
   )
 }
 
 #' @noRd
 gear_popover_dep <- function() {
   htmlDependency(
-    name    = "gear-popover",
+    name = "gear-popover",
     version = "0.2.0",
-    src     = system.file("assets", package = "reactablePlus"),
-    script  = "js/gear-popover-binding.js",
+    src = system.file("assets", package = "reactablePlus"),
+    script = "js/gear-popover-binding.js",
     stylesheet = "css/gear-popover.css"
+  )
+}
+
+#' In-place update message handlers for cross-cell effects (mutual
+#' exclusion display swap, row class toggle). Avoids full reactable
+#' re-renders for value changes.
+#' @noRd
+reactable_plus_updates_dep <- function() {
+  htmlDependency(
+    name = "reactable-plus-updates",
+    version = "0.2.0",
+    src = system.file("assets", package = "reactablePlus"),
+    script = "js/reactable-plus-updates.js"
   )
 }
 
@@ -107,7 +120,8 @@ useReactablePlus <- function() {
     school_picker_dep(),
     homeschool_picker_dep(),
     notes_input_dep(),
-    gear_popover_dep()
+    gear_popover_dep(),
+    reactable_plus_updates_dep()
   )
 }
 

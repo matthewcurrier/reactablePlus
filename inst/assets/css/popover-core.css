@@ -345,3 +345,15 @@ select.cell-input {
 .rt-tr { overflow: visible !important; }
 .rt-td { overflow: visible !important; }
 .ReactTable { overflow: visible !important; }
+
+/* ── reactablePlus: in-place cell displacement ─────────────────────── */
+/* When a cell's data-rp-displaced toggles to "true", the active widget
+   is hidden and the mutual-exclusion display HTML takes its place.
+   The widget binding stays alive — its DOM is only display:none — so
+   when the displacement clears (e.g. user removes homeschool), the
+   widget reappears with its existing state intact. No table re-render. */
+
+.rp-cell-wrap                                  { display: block; }
+.rp-cell-wrap .rp-cell-displaced               { display: none; }
+.rp-cell-wrap[data-rp-displaced="true"] .rp-cell-active     { display: none; }
+.rp-cell-wrap[data-rp-displaced="true"] .rp-cell-displaced  { display: block; }
