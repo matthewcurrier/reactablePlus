@@ -12,7 +12,6 @@
 #   - how to marshal data in/out (from saved DB rows -> state, state -> output)
 # =============================================================================
 
-
 #' Build a table configuration
 #'
 #' Creates a declarative configuration object that drives
@@ -100,24 +99,25 @@
 #' }
 #'
 #' @export
-table_config <- function(row_keys,
-                         row_labels,
-                         columns,
-                         selectable      = FALSE,
-                         show_reset      = FALSE,
-                         gear_toggles    = NULL,
-                         interactions    = list(),
-                         from_saved_fn   = NULL,
-                         to_output_fn    = NULL,
-                         toolbar_stats_fn = NULL,
-                         search_fn_col   = NULL,
-                         badge_col       = NULL,
-                         badge_label     = "Label",
-                         badge_render_fn = NULL,
-                         row_class_fn    = NULL,
-                         year_col        = NULL,
-                         year_range      = c(1990L, 2050L)) {
-
+table_config <- function(
+  row_keys,
+  row_labels,
+  columns,
+  selectable = FALSE,
+  show_reset = FALSE,
+  gear_toggles = NULL,
+  interactions = list(),
+  from_saved_fn = NULL,
+  to_output_fn = NULL,
+  toolbar_stats_fn = NULL,
+  search_fn_col = NULL,
+  badge_col = NULL,
+  badge_label = "Label",
+  badge_render_fn = NULL,
+  row_class_fn = NULL,
+  year_col = NULL,
+  year_range = c(1990L, 2050L)
+) {
   stopifnot(
     is.character(row_keys),
     is.character(row_labels),
@@ -136,13 +136,18 @@ table_config <- function(row_keys,
 
   controller_ids <- character(0)
   purrr::walk(columns, function(cs) {
-    if (is.null(cs$gate)) return()
+    if (is.null(cs$gate)) {
+      return()
+    }
     purrr::walk(cs$gate, function(cond) {
       if (cond$type == "value") {
         if (!cond$col_id %in% all_col_ids) {
           stop(
-            "widget_col '", cs$id, "' gate references col_id '",
-            cond$col_id, "' which does not exist in columns.",
+            "widget_col '",
+            cs$id,
+            "' gate references col_id '",
+            cond$col_id,
+            "' which does not exist in columns.",
             call. = FALSE
           )
         }
@@ -150,7 +155,9 @@ table_config <- function(row_keys,
       }
       if (cond$type == "selected" && !isTRUE(selectable)) {
         stop(
-          "widget_col '", cs$id, "' gate uses type 'selected' but ",
+          "widget_col '",
+          cs$id,
+          "' gate uses type 'selected' but ",
           "selectable is not TRUE in table_config().",
           call. = FALSE
         )
@@ -168,24 +175,24 @@ table_config <- function(row_keys,
 
   structure(
     list(
-      row_keys         = row_keys,
-      row_labels       = row_labels,
-      label_map        = label_map,
-      columns          = columns,
-      selectable       = selectable,
-      show_reset       = show_reset,
-      gear_toggles     = gear_toggles,
-      interactions     = interactions,
-      from_saved_fn    = from_saved_fn,
-      to_output_fn     = to_output_fn,
+      row_keys = row_keys,
+      row_labels = row_labels,
+      label_map = label_map,
+      columns = columns,
+      selectable = selectable,
+      show_reset = show_reset,
+      gear_toggles = gear_toggles,
+      interactions = interactions,
+      from_saved_fn = from_saved_fn,
+      to_output_fn = to_output_fn,
       toolbar_stats_fn = toolbar_stats_fn,
-      search_fn_col    = search_fn_col,
-      badge_col        = badge_col,
-      badge_label      = badge_label,
-      badge_render_fn  = badge_render_fn,
-      row_class_fn     = row_class_fn,
-      year_col         = year_col,
-      year_range       = year_range
+      search_fn_col = search_fn_col,
+      badge_col = badge_col,
+      badge_label = badge_label,
+      badge_render_fn = badge_render_fn,
+      row_class_fn = row_class_fn,
+      year_col = year_col,
+      year_range = year_range
     ),
     class = "table_config"
   )
@@ -286,31 +293,44 @@ table_config <- function(row_keys,
 #'
 #' @importFrom rlang `%||%`
 #' @export
-widget_col <- function(id,
-                       type,
-                       label,
-                       width        = NULL,
-                       min_width    = NULL,
-                       options      = list(),
-                       gate         = NULL,
-                       gear_toggle  = NULL,
-                       triggers_rerender = FALSE,
-                       empty_value  = NULL,
-                       render_cell_fn = NULL,
-                       validate_fn    = NULL) {
-
+widget_col <- function(
+  id,
+  type,
+  label,
+  width = NULL,
+  min_width = NULL,
+  options = list(),
+  gate = NULL,
+  gear_toggle = NULL,
+  triggers_rerender = FALSE,
+  empty_value = NULL,
+  render_cell_fn = NULL,
+  validate_fn = NULL
+) {
   stopifnot(is.character(id), length(id) == 1L)
   stopifnot(is.character(type), length(type) == 1L)
 
   valid_types <- c(
-    "school_picker", "attendance_picker", "homeschool_picker",
-    "notes_input", "custom",
-    "dropdown", "numeric", "date", "checkbox", "toggle", "text"
+    "school_picker",
+    "attendance_picker",
+    "homeschool_picker",
+    "notes_input",
+    "custom",
+    "dropdown",
+    "numeric",
+    "date",
+    "checkbox",
+    "toggle",
+    "text"
   )
   if (!type %in% valid_types) {
     stop(
-      "widget_col type '", type, "' is not supported. ",
-      "Must be one of: ", paste(valid_types, collapse = ", "), ".",
+      "widget_col type '",
+      type,
+      "' is not supported. ",
+      "Must be one of: ",
+      paste(valid_types, collapse = ", "),
+      ".",
       call. = FALSE
     )
   }
@@ -324,20 +344,26 @@ widget_col <- function(id,
     purrr::iwalk(gate, function(cond, j) {
       if (is.null(cond$type) || !cond$type %in% c("value", "selected")) {
         stop(
-          "gate[[", j, "]]$type must be 'value' or 'selected'.",
+          "gate[[",
+          j,
+          "]]$type must be 'value' or 'selected'.",
           call. = FALSE
         )
       }
       if (cond$type == "value") {
         if (is.null(cond$col_id) || !is.character(cond$col_id)) {
           stop(
-            "gate[[", j, "]] (type 'value') requires a character col_id.",
+            "gate[[",
+            j,
+            "]] (type 'value') requires a character col_id.",
             call. = FALSE
           )
         }
         if (is.null(cond$values) || length(cond$values) == 0L) {
           stop(
-            "gate[[", j, "]] (type 'value') requires a non-empty values field.",
+            "gate[[",
+            j,
+            "]] (type 'value') requires a non-empty values field.",
             call. = FALSE
           )
         }
@@ -368,12 +394,12 @@ widget_col <- function(id,
   if (is.null(empty_value)) {
     empty_value <- switch(
       type,
-      dropdown  = NA_character_,
-      numeric   = options$min %||% 0,
-      date      = NA_character_,
-      checkbox  = FALSE,
-      toggle    = FALSE,
-      text      = "",
+      dropdown = NA_character_,
+      numeric = options$min %||% 0,
+      date = NA_character_,
+      checkbox = FALSE,
+      toggle = FALSE,
+      text = "",
       notes_input = "",
       NULL # pickers and custom default to NULL
     )
@@ -381,19 +407,98 @@ widget_col <- function(id,
 
   structure(
     list(
-      id                = id,
-      type              = type,
-      label             = label,
-      width             = width,
-      min_width         = min_width,
-      options           = options,
-      gate              = gate,
-      gear_toggle       = gear_toggle,
+      id = id,
+      type = type,
+      label = label,
+      width = width,
+      min_width = min_width,
+      options = options,
+      gate = gate,
+      gear_toggle = gear_toggle,
       triggers_rerender = triggers_rerender,
-      empty_value       = empty_value,
-      render_cell_fn    = render_cell_fn,
-      validate_fn       = validate_fn
+      empty_value = empty_value,
+      render_cell_fn = render_cell_fn,
+      validate_fn = validate_fn
     ),
     class = "widget_col"
   )
+}
+
+
+#' Normalize dropdown choices to list-of-lists format
+#'
+#' Converts shorthand choice formats into the canonical list-of-lists
+#' structure expected by `validate_col_spec()` and the cell renderers.
+#' Called automatically during validation, but can also be used directly.
+#'
+#' Three formats are accepted:
+#' \describe{
+#'   \item{Unnamed character vector}{`c("High", "Medium", "Low")` —
+#'     label and value are identical.}
+#'   \item{Named character vector}{`c("High" = "high", "Medium" = "med")` —
+#'     names become labels, values become values.}
+#'   \item{List of lists}{`list(list(label = "High", value = "high"), ...)` —
+#'     canonical format, returned as-is.}
+#' }
+#'
+#' @param choices A character vector, named character vector, or list of
+#'   lists. Empty strings and `NA` values in character vectors are rejected.
+#'
+#' @return A list of lists, each with `label` (character) and `value`.
+#'
+#' @examples
+#' # Unnamed vector — label == value
+#' normalize_choices(c("High", "Medium", "Low"))
+#'
+#' # Named vector — names are labels
+#' normalize_choices(c("High" = "high", "Medium" = "med", "Low" = "low"))
+#'
+#' # Already canonical — returned as-is
+#' normalize_choices(list(
+#'   list(label = "Good", value = 3),
+#'   list(label = "Bad",  value = 1)
+#' ))
+#'
+#' @export
+normalize_choices <- function(choices) {
+  if (is.character(choices)) {
+    if (length(choices) == 0L) {
+      stop("choices must contain at least one entry.", call. = FALSE)
+    }
+    if (any(is.na(choices))) {
+      stop("choices must not contain NA values.", call. = FALSE)
+    }
+    if (any(nchar(choices) == 0L)) {
+      stop(
+        "choices must not contain empty strings. ",
+        "Each choice needs a non-empty label.",
+        call. = FALSE
+      )
+    }
+
+    nms <- names(choices)
+    if (is.null(nms)) {
+      # Unnamed vector: label == value
+      purrr::map(unname(choices), \(x) list(label = x, value = x))
+    } else {
+      # Named vector: names are labels, values are values
+      if (any(nchar(nms) == 0L)) {
+        stop(
+          "Named choice vectors must not have empty names. ",
+          "Every element needs a non-empty name as its label.",
+          call. = FALSE
+        )
+      }
+      purrr::imap(choices, \(val, lab) list(label = lab, value = val)) |>
+        unname()
+    }
+  } else if (is.list(choices)) {
+    choices
+  } else {
+    stop(
+      "choices must be a character vector, named character vector, ",
+      "or list of lists (each with 'label' and 'value').",
+      call. = FALSE
+    )
+  }
 }
