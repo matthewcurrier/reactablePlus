@@ -11,26 +11,26 @@
 
 .gear-btn {
   appearance: none;
-  border: 1px solid var(--sh-border);
-  background: var(--sh-surface);
+  border: 1px solid var(--sh-border, #d8dde3);
+  background: var(--sh-surface, #ffffff);
   width: 34px;
   height: 34px;
-  border-radius: var(--sh-radius);
+  border-radius: var(--sh-radius, 4px);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--sh-text-muted);
+  color: var(--sh-text-muted, #5b6470);
   cursor: default;
   transition: all 0.12s ease;
 }
 .gear-btn:hover,
 .gear-btn.is-on {
-  color: var(--sh-teal);
-  border-color: var(--sh-teal);
-  background: var(--sh-teal-soft);
+  color: var(--sh-teal, #1f7a7a);
+  border-color: var(--sh-teal, #1f7a7a);
+  background: var(--sh-teal-soft, #e3f0f0);
 }
 .gear-btn:focus-visible {
-  outline: 2px solid var(--sh-teal);
+  outline: 2px solid var(--sh-teal, #1f7a7a);
   outline-offset: 2px;
 }
 .gear-btn svg {
@@ -46,11 +46,22 @@
   right: 0;
   z-index: 9999;
   width: 320px;
-  background: var(--sh-surface);
-  border: 1px solid var(--sh-border);
-  border-radius: var(--sh-radius);
-  box-shadow: var(--sh-shadow-md);
+  background: var(--sh-surface, #ffffff);
+  border: 1px solid var(--sh-border, #d8dde3);
+  border-radius: var(--sh-radius, 4px);
+  box-shadow: var(--sh-shadow-md, 0 8px 24px rgba(15,23,42,0.10));
   overflow: hidden;
+}
+
+/* Portal mode: fixed positioning when appended to document.body */
+.gear-popover.gear-popover-portal {
+  position: fixed;
+}
+
+/* When in portal mode, clear the original absolute positioning rules */
+.gear-popover-portal {
+  top: auto;
+  right: auto;
 }
 
 /* ── Section header ────────────────────────────────────────────────── */
@@ -59,11 +70,11 @@
   padding: 12px 14px 8px;
   font-size: 12px;
   font-weight: 600;
-  color: var(--sh-text);
+  color: var(--sh-text, #1f2328);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  border-bottom: 1px solid var(--sh-border);
-  background: var(--sh-row-stripe);
+  border-bottom: 1px solid var(--sh-border, #d8dde3);
+  background: var(--sh-row-stripe, #fafbfc);
 }
 
 /* ── Toggle rows ───────────────────────────────────────────────────── */
@@ -84,7 +95,7 @@
   cursor: default;
 }
 .gear-toggle:hover {
-  background: var(--sh-row-hover);
+  background: var(--sh-row-hover, #f4f7f7);
 }
 
 .gear-toggle-body {
@@ -95,11 +106,11 @@
 .gear-opt-title {
   font-size: 13.5px;
   font-weight: 500;
-  color: var(--sh-text);
+  color: var(--sh-text, #1f2328);
 }
 .gear-opt-desc {
   font-size: 12px;
-  color: var(--sh-text-muted);
+  color: var(--sh-text-muted, #5b6470);
   margin-top: 1px;
 }
 

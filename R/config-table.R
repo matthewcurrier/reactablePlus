@@ -35,6 +35,7 @@ config_table_ui <- function(id, config) {
   toolbar <- if (has_toolbar) {
     shiny::tags$div(
       class = "panel-toolbar",
+      style = "display: flex; align-items: center; gap: 8px;",
       if (!is.null(config$toolbar_stats_fn)) {
         shiny::tags$span(
           class = "toolbar-stat",
@@ -43,15 +44,19 @@ config_table_ui <- function(id, config) {
       },
       if (isTRUE(config$show_reset)) {
         shiny::actionButton(
-          ns("reset"), "Reset",
+          ns("reset"),
+          "Reset",
           class = "btn btn-warning btn-sm",
           style = "margin-left: auto;"
         )
       },
       if (!is.null(config$gear_toggles)) {
-        gearPopoverInput(
-          inputId = ns("gear"),
-          toggles = config$gear_toggles
+        shiny::tags$div(
+          style = if (isTRUE(config$show_reset)) NULL else "margin-left: auto;",
+          gearPopoverInput(
+            inputId = ns("gear"),
+            toggles = config$gear_toggles
+          )
         )
       }
     )
@@ -151,13 +156,21 @@ config_table_server <- function(
       }
     })
 
-    shiny::observeEvent(
-      gear(),
-      {
+    # Only re-render when gear values actually change — not on the
+    # initial sync where the client sends values identical to the
+    # computed defaults. The observeEvent pattern fires on any
+    # reactive invalidation regardless of value equality, which
+    # causes a spurious re-render ~1 s after page load that destroys
+    # any popover the user opened in that window.
+    prev_gear <- shiny::reactiveVal(NULL)
+    shiny::observe({
+      g <- gear()
+      old_g <- shiny::isolate(prev_gear())
+      if (!is.null(old_g) && !identical(old_g, g)) {
         render_key(render_key() + 1L)
-      },
-      ignoreInit = TRUE
-    )
+      }
+      prev_gear(g)
+    })
 
     # ── Toolbar stats ────────────────────────────────────────────────────
     if (!is.null(config$toolbar_stats_fn)) {
@@ -169,12 +182,14 @@ config_table_server <- function(
     # ── Column observers ─────────────────────────────────────────────────
     # One observer per column × row. Updates flow into rows() directly.
 
-    purrr::walk(config$columns, .wire_column_observers,
-      row_keys   = ROW_KEYS,
-      input      = input,
-      rows       = rows,
+    purrr::walk(
+      config$columns,
+      .wire_column_observers,
+      row_keys = ROW_KEYS,
+      input = input,
+      rows = rows,
       render_key = render_key,
-      config     = config
+      config = config
     )
 
     # ── Year input observer ──────────────────────────────────────────────
@@ -230,27 +245,37 @@ config_table_server <- function(
 
         fill_keys <- ROW_KEYS[seq_along(ROW_KEYS) > from_idx]
 
-        rs <- purrr::reduce(fill_keys, function(acc, gk) {
-          r <- acc[[gk]]
-          if (!is.list(r)) return(acc)
-          if (!is.null(r[[fd$column]])) return(acc)
-
-          # Skip if any mutual-exclusion column is active
-          me_active <- purrr::some(me_cols, ~ !is.null(r[[.x]]))
-          if (me_active) return(acc)
-
-          # Range check
-          if (isTRUE(fd$range_check)) {
-            low  <- school$low_grade
-            high <- school$high_grade
-            if (!is.null(low) && !is.null(high)) {
-              if (!gradeInRange(gk, low, high)) return(acc)
+        rs <- purrr::reduce(
+          fill_keys,
+          function(acc, gk) {
+            r <- acc[[gk]]
+            if (!is.list(r)) {
+              return(acc)
             }
-          }
+            if (!is.null(r[[fd$column]])) {
+              return(acc)
+            }
 
-          acc[[gk]][[fd$column]] <- school
-          acc
-        }, .init = rs)
+            # Skip if any mutual-exclusion column is active
+            me_active <- purrr::some(me_cols, ~ !is.null(r[[.x]]))
+            if (me_active) {
+              return(acc)
+            }
+
+            # Range check
+            if (isTRUE(fd$range_check)) {
+              low <- school$low_grade
+              high <- school$high_grade
+              if (!is.null(low) && !is.null(high)) {
+                if (!gradeInRange(gk, low, high)) return(acc)
+              }
+            }
+
+            acc[[gk]][[fd$column]] <- school
+            acc
+          },
+          .init = rs
+        )
         rows(rs)
         render_key(render_key() + 1L)
       })
@@ -321,7 +346,9 @@ config_table_server <- function(
         rowClass = function(index) {
           gk <- tbl[[1]][index]
           row <- current_rows[[gk]]
-          if (!is.list(row)) return(NULL)
+          if (!is.list(row)) {
+            return(NULL)
+          }
 
           # User-supplied row class takes precedence
           if (!is.null(config$row_class_fn)) {
@@ -330,8 +357,10 @@ config_table_server <- function(
 
           # Fallback: apply "me-active" class when any mutual-exclusion
           # column is active (backward compatible with existing CSS)
-          if (length(me_cols) > 0L &&
-              purrr::some(me_cols, ~ !is.null(row[[.x]]))) {
+          if (
+            length(me_cols) > 0L &&
+              purrr::some(me_cols, ~ !is.null(row[[.x]]))
+          ) {
             "me-active"
           } else {
             NULL
@@ -353,12 +382,16 @@ config_table_server <- function(
         lapply(ROW_KEYS, function(gk) {
           row_state <- rs[[gk]]
           # Enforce gating: force empty_value where gate is closed
-          sanitized <- purrr::reduce(config$columns, function(acc, cs) {
-            if (!is.null(cs$gate) && !.is_gate_open(cs$gate, acc)) {
-              acc[[cs$id]] <- cs$empty_value
-            }
-            acc
-          }, .init = row_state)
+          sanitized <- purrr::reduce(
+            config$columns,
+            function(acc, cs) {
+              if (!is.null(cs$gate) && !.is_gate_open(cs$gate, acc)) {
+                acc[[cs$id]] <- cs$empty_value
+              }
+              acc
+            },
+            .init = row_state
+          )
           config$to_output_fn(sanitized, gk)
         })
       )
@@ -376,7 +409,7 @@ config_table_server <- function(
     }
 
     list(
-      get_data     = get_data,
+      get_data = get_data,
       selected_ids = selected_ids
     )
   })
@@ -400,10 +433,14 @@ config_table_server <- function(
         row[[config$year_col]] <- NA_integer_
       }
       # Widget columns
-      purrr::reduce(config$columns, function(acc, cs) {
-        acc[[cs$id]] <- cs$empty_value
-        acc
-      }, .init = row)
+      purrr::reduce(
+        config$columns,
+        function(acc, cs) {
+          acc[[cs$id]] <- cs$empty_value
+          acc
+        },
+        .init = row
+      )
     }),
     config$row_keys
   )
@@ -419,19 +456,25 @@ config_table_server <- function(
     return(rows)
   }
 
-  purrr::reduce(seq_len(nrow(saved)), function(acc, i) {
-    db_row <- saved[i, ]
-    gk <- as.character(db_row[[1]]) # first column assumed to be row key
-    if (!(gk %in% config$row_keys)) return(acc)
+  purrr::reduce(
+    seq_len(nrow(saved)),
+    function(acc, i) {
+      db_row <- saved[i, ]
+      gk <- as.character(db_row[[1]]) # first column assumed to be row key
+      if (!(gk %in% config$row_keys)) {
+        return(acc)
+      }
 
-    parsed <- config$from_saved_fn(db_row, config$columns)
-    if (is.list(parsed)) {
-      purrr::iwalk(parsed, function(val, nm) {
-        acc[[gk]][[nm]] <<- val
-      })
-    }
-    acc
-  }, .init = rows)
+      parsed <- config$from_saved_fn(db_row, config$columns)
+      if (is.list(parsed)) {
+        purrr::iwalk(parsed, function(val, nm) {
+          acc[[gk]][[nm]] <<- val
+        })
+      }
+      acc
+    },
+    .init = rows
+  )
 }
 
 
@@ -481,7 +524,18 @@ config_table_server <- function(
         rows(rs)
 
         if (isTRUE(local_cs$triggers_rerender)) {
-          render_key(render_key() + 1L)
+          # Only re-render when the column's presence state changes
+          # (NULL ↔ non-NULL). Editing within a filled column (e.g.,
+          # changing provider, typing notes) does NOT need a re-render —
+          # the widget handles its own display. This prevents flicker
+          # on every keystroke or detail change.
+          was_empty <- is.null(old_val)
+          now_empty <- is.null(new_val)
+          presence_changed <- was_empty != now_empty
+
+          if (presence_changed) {
+            render_key(render_key() + 1L)
+          }
         }
       },
       ignoreNULL = FALSE,
@@ -508,14 +562,22 @@ config_table_server <- function(
       if (is.null(val) || length(val) == 0L) "" else as.character(val)[1L]
     },
     dropdown = {
-      if (is.null(val) || identical(val, "")) NA_character_ else as.character(val)[1L]
+      if (is.null(val) || identical(val, "")) {
+        NA_character_
+      } else {
+        as.character(val)[1L]
+      }
     },
     numeric = {
       num <- suppressWarnings(as.numeric(val))
       if (is.null(num) || length(num) == 0L || is.na(num)) NA_real_ else num
     },
     date = {
-      if (is.null(val) || identical(val, "")) NA_character_ else as.character(val)[1L]
+      if (is.null(val) || identical(val, "")) {
+        NA_character_
+      } else {
+        as.character(val)[1L]
+      }
     },
     checkbox = ,
     toggle = {
@@ -536,7 +598,9 @@ config_table_server <- function(
 #' @return Logical scalar.
 #' @noRd
 .is_gate_open <- function(gate, row_state) {
-  if (is.null(gate)) return(TRUE)
+  if (is.null(gate)) {
+    return(TRUE)
+  }
 
   all(purrr::map_lgl(gate, function(cond) {
     if (cond$type == "selected") {
@@ -561,7 +625,7 @@ config_table_server <- function(
   if (locked) {
     list(
       disabled = "disabled",
-      style    = paste0(
+      style = paste0(
         base_style,
         " opacity: 0.4; cursor: not-allowed; pointer-events: none;"
       )
@@ -569,7 +633,7 @@ config_table_server <- function(
   } else {
     list(
       disabled = NULL,
-      style    = if (nchar(base_style) > 0L) base_style else NULL
+      style = if (nchar(base_style) > 0L) base_style else NULL
     )
   }
 }
@@ -589,10 +653,16 @@ config_table_server <- function(
 
   # Selection column
   if (isTRUE(config$selectable)) {
-    tbl$.selected <- vapply(current_rows, function(r) {
-      if (!is.list(r)) return(FALSE)
-      isTRUE(r$.selected)
-    }, logical(1))
+    tbl$.selected <- vapply(
+      current_rows,
+      function(r) {
+        if (!is.list(r)) {
+          return(FALSE)
+        }
+        isTRUE(r$.selected)
+      },
+      logical(1)
+    )
   }
 
   # Year column
@@ -620,17 +690,28 @@ config_table_server <- function(
     is.null(cs$gear_toggle) || isTRUE(settings[[cs$gear_toggle]])
   })
 
-  primitive_types <- c("dropdown", "numeric", "date", "checkbox",
-                       "toggle", "text", "notes_input")
+  primitive_types <- c(
+    "dropdown",
+    "numeric",
+    "date",
+    "checkbox",
+    "toggle",
+    "text",
+    "notes_input"
+  )
 
-  tbl <- purrr::reduce(visible_cols, function(acc, cs) {
-    if (cs$type %in% primitive_types) {
-      acc[[cs$id]] <- .extract_col_values(current_rows, cs)
-    } else {
-      acc[[cs$id]] <- rep("", n)
-    }
-    acc
-  }, .init = tbl)
+  tbl <- purrr::reduce(
+    visible_cols,
+    function(acc, cs) {
+      if (cs$type %in% primitive_types) {
+        acc[[cs$id]] <- .extract_col_values(current_rows, cs)
+      } else {
+        acc[[cs$id]] <- rep("", n)
+      }
+      acc
+    },
+    .init = tbl
+  )
 
   tbl
 }
@@ -641,24 +722,46 @@ config_table_server <- function(
 .extract_col_values <- function(current_rows, cs) {
   switch(
     cs$type,
-    numeric = vapply(current_rows, function(r) {
-      if (!is.list(r)) return(NA_real_)
-      val <- r[[cs$id]]
-      if (is.null(val) || length(val) == 0L) NA_real_ else as.numeric(val)
-    }, numeric(1)),
+    numeric = vapply(
+      current_rows,
+      function(r) {
+        if (!is.list(r)) {
+          return(NA_real_)
+        }
+        val <- r[[cs$id]]
+        if (is.null(val) || length(val) == 0L) NA_real_ else as.numeric(val)
+      },
+      numeric(1)
+    ),
 
     checkbox = ,
-    toggle = vapply(current_rows, function(r) {
-      if (!is.list(r)) return(FALSE)
-      isTRUE(r[[cs$id]])
-    }, logical(1)),
+    toggle = vapply(
+      current_rows,
+      function(r) {
+        if (!is.list(r)) {
+          return(FALSE)
+        }
+        isTRUE(r[[cs$id]])
+      },
+      logical(1)
+    ),
 
     # dropdown, date, text, notes_input → character
-    vapply(current_rows, function(r) {
-      if (!is.list(r)) return("")
-      val <- r[[cs$id]]
-      if (is.null(val) || length(val) == 0L || is.na(val)) "" else as.character(val)[1L]
-    }, character(1))
+    vapply(
+      current_rows,
+      function(r) {
+        if (!is.list(r)) {
+          return("")
+        }
+        val <- r[[cs$id]]
+        if (is.null(val) || length(val) == 0L || is.na(val)) {
+          ""
+        } else {
+          as.character(val)[1L]
+        }
+      },
+      character(1)
+    )
   )
 }
 
@@ -674,26 +777,26 @@ config_table_server <- function(
   # Selection checkbox column
   if (isTRUE(config$selectable)) {
     col_defs$.selected <- reactable::colDef(
-      name   = "",
-      width  = 40L,
-      align  = "center",
-      html   = TRUE,
-      cell   = function(value, index) {
+      name = "",
+      width = 40L,
+      align = "center",
+      html = TRUE,
+      cell = function(value, index) {
         gk <- tbl$.row_key[index]
         row <- current_rows[[gk]]
         is_checked <- isTRUE(if (is.list(row)) row$.selected else FALSE)
         input_id <- ns(paste0(".selected_", gk))
 
         as.character(htmltools::tags$input(
-          id       = input_id,
-          type     = "checkbox",
-          checked  = if (is_checked) "checked" else NULL,
+          id = input_id,
+          type = "checkbox",
+          checked = if (is_checked) "checked" else NULL,
           onchange = sprintf(
             "Shiny.setInputValue('%s', this.checked, {priority: 'event'});",
             input_id
           ),
           onclick = "event.stopPropagation();",
-          style   = "width: 16px; height: 16px; cursor: pointer;"
+          style = "width: 16px; height: 16px; cursor: pointer;"
         ))
       }
     )
@@ -701,13 +804,14 @@ config_table_server <- function(
 
   # Badge column
   if (!is.null(config$badge_col)) {
-    badge_fn <- config$badge_render_fn %||% function(row_key, row_label) {
-      sprintf("<span>%s</span>", htmltools::htmlEscape(row_label))
-    }
+    badge_fn <- config$badge_render_fn %||%
+      function(row_key, row_label) {
+        sprintf("<span>%s</span>", htmltools::htmlEscape(row_label))
+      }
     col_defs$.row_label <- reactable::colDef(
-      name  = config$badge_label %||% "Label",
+      name = config$badge_label %||% "Label",
       width = 76,
-      cell  = function(value, index) {
+      cell = function(value, index) {
         gk <- tbl$.row_key[index]
         badge_fn(gk, value)
       },
@@ -938,7 +1042,7 @@ config_table_server <- function(
       la <- .locked_attrs(locked, "width: 100%; padding: 4px;")
 
       placeholder_tag <- htmltools::tags$option(
-        value    = "",
+        value = "",
         disabled = "disabled",
         selected = if (!has_value) "selected" else NULL,
         opts$placeholder %||% "-- Select --"
@@ -948,20 +1052,20 @@ config_table_server <- function(
         is_match <- has_value &&
           identical(as.character(current_val), as.character(choice$value))
         htmltools::tags$option(
-          value    = choice$value,
+          value = choice$value,
           selected = if (is_match) "selected" else NULL,
           choice$label
         )
       })
 
       as.character(htmltools::tags$select(
-        id       = input_id,
+        id = input_id,
         onchange = sprintf(
           "Shiny.setInputValue('%s', this.value, {priority: 'event'});",
           input_id
         ),
         disabled = la$disabled,
-        style    = la$style,
+        style = la$style,
         placeholder_tag,
         choice_tags
       ))
@@ -983,14 +1087,14 @@ config_table_server <- function(
       la <- .locked_attrs(locked, "width: 100%; padding: 4px;")
 
       as.character(htmltools::tags$input(
-        id       = input_id,
-        type     = "number",
-        value    = initial,
-        min      = opts$min,
-        max      = opts$max,
-        step     = opts$step,
+        id = input_id,
+        type = "number",
+        value = initial,
+        min = opts$min,
+        max = opts$max,
+        step = opts$step,
         disabled = la$disabled,
-        oninput  = sprintf(
+        oninput = sprintf(
           "Shiny.setInputValue('%s', parseFloat(this.value), {priority: 'event'});",
           input_id
         ),
@@ -1014,11 +1118,11 @@ config_table_server <- function(
       la <- .locked_attrs(locked, "width: 100%; padding: 4px;")
 
       as.character(htmltools::tags$input(
-        id       = input_id,
-        type     = "date",
-        value    = initial,
-        min      = opts$min_date,
-        max      = opts$max_date,
+        id = input_id,
+        type = "date",
+        value = initial,
+        min = opts$min_date,
+        max = opts$max_date,
         disabled = la$disabled,
         onchange = sprintf(
           "Shiny.setInputValue('%s', this.value, {priority: 'event'});",
@@ -1038,9 +1142,9 @@ config_table_server <- function(
       la <- .locked_attrs(locked, "width: 20px; height: 20px;")
 
       as.character(htmltools::tags$input(
-        id       = input_id,
-        type     = "checkbox",
-        checked  = if (is_checked) "checked" else NULL,
+        id = input_id,
+        type = "checkbox",
+        checked = if (is_checked) "checked" else NULL,
         disabled = la$disabled,
         onchange = sprintf(
           "Shiny.setInputValue('%s', this.checked, {priority: 'event'});",
@@ -1058,29 +1162,35 @@ config_table_server <- function(
 
       input_id <- ns(paste0(cs$id, "_", gk))
       state_id <- input_id
-      btn_id   <- paste0(input_id, "_btn")
+      btn_id <- paste0(input_id, "_btn")
 
       btn_style <- paste0(
         "padding: 3px 12px; border-radius: 12px; border: none; ",
-        "background-color: ", if (is_on) "#28a745" else "#6c757d", "; ",
+        "background-color: ",
+        if (is_on) "#28a745" else "#6c757d",
+        "; ",
         "color: white; font-size: 0.85em; ",
-        if (locked) "opacity: 0.4; cursor: not-allowed; pointer-events: none;"
-        else "cursor: pointer;"
+        if (locked) {
+          "opacity: 0.4; cursor: not-allowed; pointer-events: none;"
+        } else {
+          "cursor: pointer;"
+        }
       )
 
       as.character(htmltools::tagList(
         htmltools::tags$input(
-          id    = state_id,
-          type  = "hidden",
+          id = state_id,
+          type = "hidden",
           value = tolower(as.character(is_on))
         ),
         htmltools::tags$button(
-          id       = btn_id,
-          type     = "button",
+          id = btn_id,
+          type = "button",
           disabled = if (locked) "disabled" else NULL,
-          style    = btn_style,
-          onclick  = if (!locked) sprintf(
-            "(function() {
+          style = btn_style,
+          onclick = if (!locked) {
+            sprintf(
+              "(function() {
                var s = document.getElementById('%s');
                var b = document.getElementById('%s');
                var newVal = s.value !== 'true';
@@ -1089,8 +1199,13 @@ config_table_server <- function(
                b.style.backgroundColor = newVal ? '#28a745' : '#6c757d';
                Shiny.setInputValue('%s', newVal, {priority: 'event'});
              })();",
-            state_id, btn_id, input_id
-          ) else NULL,
+              state_id,
+              btn_id,
+              input_id
+            )
+          } else {
+            NULL
+          },
           if (is_on) "On" else "Off"
         )
       ))
@@ -1112,13 +1227,13 @@ config_table_server <- function(
       la <- .locked_attrs(locked, "width: 100%; padding: 4px;")
 
       as.character(htmltools::tags$input(
-        id          = input_id,
-        type        = "text",
-        value       = initial,
-        maxlength   = opts$max_chars,
+        id = input_id,
+        type = "text",
+        value = initial,
+        maxlength = opts$max_chars,
         placeholder = opts$placeholder,
-        disabled    = la$disabled,
-        oninput     = sprintf(
+        disabled = la$disabled,
+        oninput = sprintf(
           "Shiny.setInputValue('%s', this.value, {priority: 'event'});",
           input_id
         ),

@@ -92,6 +92,7 @@
       var gradeKey = el.getAttribute("data-grade-key") || "";
       var ns = el.getAttribute("data-ns") || "";
       var cfg = getConfig(el);
+      var suppressChange = false;
 
       var popover = PopoverCore.create(el, {
         triggerLabel: cfg.trigger_label,
@@ -255,15 +256,26 @@
           );
         },
 
-        // On first click (empty state), set value to empty object (= ON)
+        // On first click (empty state), set value to empty object (= ON).
+        // Use silent = true so Shiny is NOT notified yet — the table
+        // re-render would destroy the popover before the user interacts.
+        // All Shiny notifications are deferred to onClose.
         onOpen: function (instance) {
+          suppressChange = true;
           if (instance.getValue() === null) {
-            instance.setValue({});
+            instance.setValue({}, true);
           }
         },
 
-        onChange: function () {
+        onClose: function () {
+          suppressChange = false;
           $(el).trigger("change");
+        },
+
+        onChange: function () {
+          if (!suppressChange) {
+            $(el).trigger("change");
+          }
         },
       });
 

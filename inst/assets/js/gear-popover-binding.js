@@ -56,6 +56,15 @@
       el.appendChild(btn);
 
       // ── Open / close
+      var repositionHandler = null;
+
+      function positionPopover() {
+        if (!popoverEl) return;
+        var rect = btn.getBoundingClientRect();
+        popoverEl.style.top = (rect.bottom + 6) + "px";
+        popoverEl.style.left = (rect.right - popoverEl.offsetWidth) + "px";
+      }
+
       function openPopover() {
         if (isOpen) return;
 
@@ -68,6 +77,11 @@
         btn.classList.add("is-on");
         btn.setAttribute("aria-expanded", "true");
         buildPopover();
+
+        // Reposition on scroll/resize so it follows the gear button
+        repositionHandler = function () { positionPopover(); };
+        window.addEventListener("scroll", repositionHandler, true);
+        window.addEventListener("resize", repositionHandler);
       }
 
       function closePopover() {
@@ -75,6 +89,11 @@
         isOpen = false;
         btn.classList.remove("is-on");
         btn.setAttribute("aria-expanded", "false");
+        if (repositionHandler) {
+          window.removeEventListener("scroll", repositionHandler, true);
+          window.removeEventListener("resize", repositionHandler);
+          repositionHandler = null;
+        }
         if (popoverEl && popoverEl.parentNode) {
           popoverEl.parentNode.removeChild(popoverEl);
         }
@@ -86,9 +105,13 @@
         else openPopover();
       });
 
-      // Outside click closes
+      // Outside click closes — check both the gear wrap AND the portal popover
       document.addEventListener("mousedown", function (e) {
-        if (isOpen && !el.contains(e.target)) {
+        if (
+          isOpen &&
+          !el.contains(e.target) &&
+          !(popoverEl && popoverEl.contains(e.target))
+        ) {
           closePopover();
         }
       });
@@ -171,8 +194,13 @@
         });
 
         pop.appendChild(options);
-        el.appendChild(pop);
+
+        // Portal mode: append to body so the popover escapes any
+        // ancestor overflow:hidden (e.g. bslib card)
+        pop.classList.add("gear-popover-portal");
+        document.body.appendChild(pop);
         popoverEl = pop;
+        positionPopover();
       }
 
       // Store references

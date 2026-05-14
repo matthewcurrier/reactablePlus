@@ -79,9 +79,11 @@
       this._renderEmpty();
     }
 
-    // Re-attach popover if it was open
+    // Re-attach popover if it was open — keep it in body (portal mode)
+    // so it's not affected by ancestor transforms or overflow
     if (existing) {
-      this._container.appendChild(existing);
+      document.body.appendChild(existing);
+      this._positionPopover();
     }
   };
 
@@ -207,6 +209,15 @@
 
   Popover.prototype._positionPopover = function () {
     if (!this._popoverEl || !this._container) return;
+
+    // If the container was removed from the DOM (e.g., reactable re-render
+    // destroyed the table cell), close this popover to clean up the
+    // orphaned overlay sitting in document.body.
+    if (!document.body.contains(this._container)) {
+      this.close();
+      return;
+    }
+
     var rect = this._container.getBoundingClientRect();
     this._popoverEl.style.top = (rect.bottom + 4) + "px";
     this._popoverEl.style.left = rect.left + "px";
@@ -294,6 +305,18 @@
     };
     window.addEventListener("scroll", this._repositionHandler, true);
     window.addEventListener("resize", this._repositionHandler);
+
+    // Watch for container detachment (reactable re-render destroys cells).
+    // If the container is removed from the DOM, close the popover to clean
+    // up the orphaned overlay. Uses rAF for immediate detection.
+    (function watchAlive() {
+      if (!self._isOpen) return;
+      if (!document.body.contains(self._container)) {
+        self.close();
+        return;
+      }
+      requestAnimationFrame(watchAlive);
+    })();
 
     // Focus first interactive element inside the body (skip close button)
     requestAnimationFrame(function () {
