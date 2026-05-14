@@ -11,6 +11,7 @@ widget_col(
   width = NULL,
   min_width = NULL,
   options = list(),
+  gate = NULL,
   gear_toggle = NULL,
   triggers_rerender = FALSE,
   empty_value = NULL,
@@ -22,9 +23,17 @@ widget_col(
 \item{id}{Character. Column ID — becomes the key in row state and
 the prefix for Shiny input IDs (e.g. \code{"school"} -> \code{input$school_PK}).}
 
-\item{type}{Character. Widget type: \code{"school_picker"},
-\code{"attendance_picker"}, \code{"homeschool_picker"}, \code{"notes_input"},
-or \code{"custom"}.}
+\item{type}{Character. One of:
+
+\strong{Picker widgets} (complex popover-based inputs):
+\code{"school_picker"}, \code{"attendance_picker"}, \code{"homeschool_picker"},
+\code{"notes_input"}.
+
+\strong{Primitive inputs} (inline HTML form controls):
+\code{"dropdown"}, \code{"numeric"}, \code{"date"}, \code{"checkbox"}, \code{"toggle"},
+\code{"text"}.
+
+\strong{Extensible}: \code{"custom"} (requires \code{render_cell_fn}).}
 
 \item{label}{Character. Column header text.}
 
@@ -32,9 +41,37 @@ or \code{"custom"}.}
 
 \item{min_width}{Integer or NULL. Minimum column width.}
 
-\item{options}{Named list of widget-specific options passed to the
-widget constructor (e.g. \code{list(show_nces_id = TRUE)} for school
-picker, \code{list(sections = ...)} for attendance picker).}
+\item{options}{Named list of type-specific options:
+
+\strong{Picker widgets}: passed to the widget constructor (e.g.
+\code{list(show_nces_id = TRUE)} for school picker,
+\code{list(sections = ...)} for attendance picker).
+
+\strong{dropdown}: \code{choices} (required — character vector, named
+character vector, or list of \code{list(label, value)}; see
+\code{\link[=normalize_choices]{normalize_choices()}}), \code{placeholder} (default \code{"-- Select --"}).
+
+\strong{numeric}: \code{min} (required), \code{max}, \code{step}.
+
+\strong{date}: \code{min_date}, \code{max_date} (YYYY-MM-DD strings).
+
+\strong{text}: \code{max_chars}, \code{placeholder}.
+
+\strong{checkbox} / \strong{toggle}: no extra options.}
+
+\item{gate}{A list of conditions that must ALL pass for this column's
+input to be enabled. When any condition fails, the input renders
+locked (disabled + dimmed) and its value is forced to \code{empty_value}
+in \code{get_data()}. Two condition types are supported:
+
+\code{list(type = "value", col_id = "status", values = c("active"))} —
+the column whose \code{id} matches \code{col_id} must have a value in
+\code{values} for this row.
+
+\code{list(type = "selected")} — the row must be selected (requires
+\code{selectable = TRUE} in \code{table_config()}).
+
+Default \code{NULL} (no gating — always enabled).}
 
 \item{gear_toggle}{Character or NULL. The gear toggle key that
 controls this column's visibility. When the toggle is off, the
@@ -42,9 +79,14 @@ column is hidden (set to \code{show = FALSE}).}
 
 \item{triggers_rerender}{Logical. If TRUE, changes to this column
 bump the render key (forcing a full table re-render). Needed for
-columns involved in mutual exclusion. Default \code{FALSE}.}
+columns involved in mutual exclusion. Automatically set to TRUE
+by \code{table_config()} for columns that act as gate controllers.
+Default \code{FALSE}.}
 
-\item{empty_value}{The default value for an empty row. Default \code{NULL}.}
+\item{empty_value}{The default value for an empty row. When \code{NULL}
+(the default), a type-appropriate blank is used: \code{NA} for
+dropdown/date, \code{options$min} (or \code{0}) for numeric, \code{FALSE} for
+checkbox/toggle, \code{""} for text/notes_input, \code{NULL} for pickers.}
 
 \item{render_cell_fn}{Function \verb{(ns, row_key, row_state, col_spec, settings)} -> HTML string. Only needed for \code{type = "custom"}.}
 
@@ -56,8 +98,25 @@ type-appropriate validation.}
 A \code{widget_col} list (S3 class \code{"widget_col"}).
 }
 \description{
-Defines a single column in a \code{table_config()}. Each widget column
-maps to a picker widget type (\code{school_picker}, \code{attendance_picker},
-\code{homeschool_picker}, \code{notes_input}, or \code{custom}) and carries
-widget-specific options.
+Defines a single column in a \code{table_config()}. Each column maps to
+either a picker widget or a primitive inline input and carries
+type-specific options.
+}
+\examples{
+# Primitive dropdown
+widget_col("status", "dropdown", "Status",
+  options = list(choices = c("Active", "Inactive", "Pending"))
+)
+
+# Numeric gated by a dropdown value
+widget_col("score", "numeric", "Score",
+  options = list(min = 0, max = 100),
+  gate = list(
+    list(type = "value", col_id = "status", values = c("active"))
+  )
+)
+
+# Picker widget
+widget_col("school", "school_picker", "School", min_width = 300)
+
 }

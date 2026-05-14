@@ -2,10 +2,23 @@
 
 #' UI function for the editable table Shiny module
 #'
+#' @description
+#' `r lifecycle::badge("deprecated")`
+#'
+#' Use [config_table_ui()] instead. The raw-spec module
+#' (`editable_table_ui` / `editable_table_server`) is superseded by
+#' the config-driven module (`config_table_ui` / `config_table_server`)
+#' which supports all the same input types plus picker widgets, gating,
+#' selection, and reset.
+#'
 #' @param id A string. The module namespace ID.
 #' @return A named list of \code{shiny.tag} objects.
+#' @keywords internal
 #' @export
 editable_table_ui <- function(id) {
+  if (!isTRUE(getOption("reactablePlus.suppress_deprecation"))) {
+    .Deprecated("config_table_ui", package = "reactablePlus")
+  }
   ns <- shiny::NS(id)
 
   list(

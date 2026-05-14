@@ -8,14 +8,19 @@ table_config(
   row_keys,
   row_labels,
   columns,
+  selectable = FALSE,
+  show_reset = FALSE,
   gear_toggles = NULL,
   interactions = list(),
   from_saved_fn = NULL,
   to_output_fn = NULL,
   toolbar_stats_fn = NULL,
   search_fn_col = NULL,
-  badge_col = "grade",
-  year_col = "school_year",
+  badge_col = NULL,
+  badge_label = "Label",
+  badge_render_fn = NULL,
+  row_class_fn = NULL,
+  year_col = NULL,
   year_range = c(1990L, 2050L)
 )
 }
@@ -26,6 +31,14 @@ table_config(
 \code{row_keys}).}
 
 \item{columns}{List of column specs built with \code{widget_col()}.}
+
+\item{selectable}{Logical. If \code{TRUE}, a checkbox column is prepended
+and row selection is tracked. Required when any column has a
+\code{gate} condition with \code{type = "selected"}. Default \code{FALSE}.}
+
+\item{show_reset}{Logical. If \code{TRUE}, a Reset button is shown in
+the toolbar that clears all inputs and deselects all rows.
+Default \code{FALSE}.}
 
 \item{gear_toggles}{Named list of toggle definitions for
 \code{gearPopoverInput()}. Pass \code{NULL} for no gear icon.}
@@ -47,11 +60,23 @@ string for the toolbar. Pass \code{NULL} for no toolbar.}
 search (i.e. uses \code{useSchoolSearch()}). Pass \code{NULL} if no column
 needs search. Default \code{NULL}.}
 
-\item{badge_col}{Character. Column ID rendered as a static badge
-from the row key/label. Default \code{"grade"}. Pass \code{NULL} to omit.}
+\item{badge_col}{Character or NULL. When non-NULL, a static label
+column is shown using \code{row_labels}. Default \code{NULL} (no badge).}
 
-\item{year_col}{Character. Column ID for the editable year spinner.
-Default \code{"school_year"}. Pass \code{NULL} to omit.}
+\item{badge_label}{Character. Column header for the badge column.
+Default \code{"Label"}. Ignored when \code{badge_col} is \code{NULL}.}
+
+\item{badge_render_fn}{Function \verb{(row_key, row_label)} -> HTML
+string for the badge cell. Default \code{NULL} renders
+\verb{<span>row_label</span>}. Supply a custom function for
+domain-specific styling (e.g. grade badges with CSS classes).}
+
+\item{row_class_fn}{Function \verb{(row_key, row_state)} -> CSS class
+string or \code{NULL}. Applied per row via reactable's \code{rowClass}.
+Default \code{NULL} (no row classes).}
+
+\item{year_col}{Character or NULL. When non-NULL, an editable year
+spinner column is shown. Default \code{NULL} (no year column).}
 
 \item{year_range}{Integer vector of length 2, e.g. \code{c(1990, 2050)}.}
 }
@@ -62,7 +87,8 @@ A \code{table_config} list (S3 class \code{"table_config"}).
 Creates a declarative configuration object that drives
 \code{config_table_ui()} / \code{config_table_server()}. The config describes
 which rows and columns appear, which picker widget each column uses,
-and how cross-column interactions (mutual exclusion, fill-down) work.
+and how cross-column interactions (mutual exclusion, fill-down,
+gating) work.
 }
 \details{
 \subsection{Interactions}{
@@ -71,8 +97,18 @@ and how cross-column interactions (mutual exclusion, fill-down) work.
 \code{when_on} (column ID), \code{clears} (column ID), and \code{display} (HTML
 string to show in the cleared column's cell).
 
-\code{interactions$fill_down}: a list with \code{column} (column ID) and
-\code{range_check} (logical — if TRUE, uses \code{gradeInRange()} to limit).
+\code{interactions$fill_down}: a list with \code{column} (column ID),
+\code{range_check} (logical), and optionally \code{input_name} (character —
+the Shiny input name the widget JS sends; defaults to
+\code{paste0(column, "_fill_down")}).
+}
+
+\subsection{Gating}{
+
+Columns with \code{gate} conditions (set via \code{widget_col(gate = ...)})
+are automatically disabled until all conditions are met. Controller
+columns referenced in \code{gate} conditions are automatically marked
+\code{triggers_rerender = TRUE} so the table updates when they change.
 }
 }
 \examples{
@@ -83,7 +119,13 @@ cfg <- table_config(
   columns    = list(
     widget_col("school", "school_picker", "School", min_width = 300),
     widget_col("attendance", "attendance_picker", "Attendance", width = 200)
-  )
+  ),
+  badge_col = "grade",
+  badge_label = "Grade",
+  badge_render_fn = function(row_key, row_label) {
+    css_class <- paste0("grade-badge g-", row_key)
+    sprintf('<span class="\%s">\%s</span>', css_class, row_label)
+  }
 )
 }
 

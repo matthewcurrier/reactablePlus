@@ -17,24 +17,12 @@ with \code{col_name} and \code{label}).}
 and row selection is enabled. Default \code{NULL} (no selection).}
 }
 \value{
-A \code{row_def} object (an S3-classed list). This is accepted
-anywhere a \code{row_spec} list is expected.
+A \code{row_def} object (an S3-classed list).
 }
 \description{
-Creates a row definition that tells \code{editable_table_server()} which
-column in the data frame identifies rows, which columns to display
-as read-only, and whether rows are selectable.
-}
-\examples{
-row_def(
-  id_col = "id",
-  display_cols = list(
-    display_col("name", "Name"),
-    display_col("grade", "Grade")
-  )
-)
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
 
-# With selection enabled
-row_def("id", list(display_col("name", "Name")), selectable = TRUE)
-
+Use \code{\link[=table_config]{table_config()}} instead. Row layout in the config-driven API
+is specified via \code{row_keys}, \code{row_labels}, and \code{selectable}.
 }
+\keyword{internal}

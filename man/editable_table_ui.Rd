@@ -13,5 +13,12 @@ editable_table_ui(id)
 A named list of \code{shiny.tag} objects.
 }
 \description{
-UI function for the editable table Shiny module
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
+
+Use \code{\link[=config_table_ui]{config_table_ui()}} instead. The raw-spec module
+(\code{editable_table_ui} / \code{editable_table_server}) is superseded by
+the config-driven module (\code{config_table_ui} / \code{config_table_server})
+which supports all the same input types plus picker widgets, gating,
+selection, and reset.
 }
+\keyword{internal}

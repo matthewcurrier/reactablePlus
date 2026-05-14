@@ -19,20 +19,14 @@ input_col(
 )
 }
 \arguments{
-\item{col_name}{Character. The column name used as the key in
-collected data.}
+\item{col_name}{Character. The column name.}
 
-\item{label}{Character. The header label shown in the table.}
+\item{label}{Character. The header label.}
 
 \item{type}{Character. One of \code{"dropdown"}, \code{"numeric"}, \code{"date"},
 \code{"checkbox"}, \code{"toggle"}, or \code{"text"}.}
 
-\item{choices}{For \code{type = "dropdown"} only. Accepts three formats:
-an unnamed character vector (\code{c("A", "B")} — label equals value),
-a named character vector (\code{c("Label" = "value")} — names become
-labels), or a list of lists (\code{list(list(label = "A", value = 1))}
-— for non-character values). Normalized internally via
-\code{normalize_choices()}.}
+\item{choices}{For \code{type = "dropdown"} only.}
 
 \item{min}{For \code{type = "numeric"}. Required minimum value.}
 
@@ -40,43 +34,22 @@ labels), or a list of lists (\code{list(list(label = "A", value = 1))}
 
 \item{step}{For \code{type = "numeric"}. Optional step increment.}
 
-\item{min_date}{For \code{type = "date"}. Optional minimum date in
-\code{"YYYY-MM-DD"} format.}
+\item{min_date}{For \code{type = "date"}. Optional minimum date.}
 
-\item{max_date}{For \code{type = "date"}. Optional maximum date in
-\code{"YYYY-MM-DD"} format.}
+\item{max_date}{For \code{type = "date"}. Optional maximum date.}
 
 \item{max_chars}{For \code{type = "text"}. Optional maximum character count.}
 
-\item{gate}{Optional list of gating conditions that control when
-this column is editable. See \code{validate_col_spec()} for the gate
-structure.}
+\item{gate}{Optional list of gating conditions.}
 }
 \value{
-An \code{input_col} object (an S3-classed list). This is accepted
-anywhere a col_spec entry (bare list) is expected.
+An \code{input_col} object (an S3-classed list).
 }
 \description{
-Creates a column specification for use in the \code{col_spec} list
-passed to \code{editable_table_server()}. Each input column renders
-as an inline Shiny input (dropdown, numeric spinner, checkbox,
-toggle, date picker, or text field).
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
+
+Use \code{\link[=widget_col]{widget_col()}} instead. \code{widget_col()} accepts the same
+primitive types (\code{"dropdown"}, \code{"numeric"}, etc.) plus picker
+widgets, with type-specific options passed via \code{options = list(...)}.
 }
-\examples{
-# Dropdown with simple choices
-input_col("role", "Role", "dropdown", choices = c("Analyst", "Engineer"))
-
-# Dropdown with label != value
-input_col("status", "Status", "dropdown",
-          choices = c("Active" = "active", "On Leave" = "leave"))
-
-# Numeric with range
-input_col("score", "Score", "numeric", min = 0, max = 100, step = 1)
-
-# Checkbox
-input_col("active", "Active", "checkbox")
-
-# Text with max length
-input_col("notes", "Notes", "text", max_chars = 500)
-
-}
+\keyword{internal}

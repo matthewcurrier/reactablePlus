@@ -15,12 +15,10 @@ display_col(col_name, label)
 A \code{display_col} object (an S3-classed list).
 }
 \description{
-Creates a display column specification for use inside \code{row_def()}.
-Display columns are read-only columns shown in the table alongside
-the editable input columns.
-}
-\examples{
-display_col("name", "Student Name")
-display_col("grade", "Grade Level")
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
 
+Use \code{\link[=table_config]{table_config()}} with \code{row_labels} instead. Display columns
+in the config-driven API are handled by \code{row_keys} / \code{row_labels}
+and the optional \code{badge_col} / \code{badge_render_fn}.
 }
+\keyword{internal}

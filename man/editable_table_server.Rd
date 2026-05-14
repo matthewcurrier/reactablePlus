@@ -42,10 +42,10 @@ rows. \code{NULL} when \code{row_spec$selectable} is not TRUE.}
 }
 }
 \description{
-Renders a reactable table with one inline Shiny input per col_spec column
-per row. When row_spec$selectable is TRUE, a checkbox column is prepended
-and clicking anywhere in a row toggles that row's selection.
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
+
+Use \code{\link[=config_table_server]{config_table_server()}} instead. The raw-spec module is
+superseded by the config-driven module. See \code{\link[=table_config]{table_config()}} and
+\code{\link[=widget_col]{widget_col()}} for the replacement API.
 }
-\details{
-A Reset button wipes all inputs and clears all selections.
-}
+\keyword{internal}

@@ -8,21 +8,23 @@
 
 #' Define a display column
 #'
-#' Creates a display column specification for use inside `row_def()`.
-#' Display columns are read-only columns shown in the table alongside
-#' the editable input columns.
+#' @description
+#' `r lifecycle::badge("deprecated")`
+#'
+#' Use [table_config()] with `row_labels` instead. Display columns
+#' in the config-driven API are handled by `row_keys` / `row_labels`
+#' and the optional `badge_col` / `badge_render_fn`.
 #'
 #' @param col_name Character. The column name in the data frame.
 #' @param label Character. The header label shown in the table.
 #'
 #' @return A `display_col` object (an S3-classed list).
-#'
-#' @examples
-#' display_col("name", "Student Name")
-#' display_col("grade", "Grade Level")
-#'
+#' @keywords internal
 #' @export
 display_col <- function(col_name, label) {
+  if (!isTRUE(getOption("reactablePlus.suppress_deprecation"))) {
+    .Deprecated("table_config", package = "reactablePlus")
+  }
   if (missing(col_name) || !is.character(col_name) || length(col_name) != 1L) {
     stop("col_name must be a single character string.", call. = FALSE)
   }
@@ -45,9 +47,11 @@ display_col <- function(col_name, label) {
 
 #' Define the row layout for an editable table
 #'
-#' Creates a row definition that tells `editable_table_server()` which
-#' column in the data frame identifies rows, which columns to display
-#' as read-only, and whether rows are selectable.
+#' @description
+#' `r lifecycle::badge("deprecated")`
+#'
+#' Use [table_config()] instead. Row layout in the config-driven API
+#' is specified via `row_keys`, `row_labels`, and `selectable`.
 #'
 #' @param id_col Character. The name of the column that uniquely
 #'   identifies each row.
@@ -56,23 +60,13 @@ display_col <- function(col_name, label) {
 #' @param selectable Logical. If `TRUE`, a checkbox column is prepended
 #'   and row selection is enabled. Default `NULL` (no selection).
 #'
-#' @return A `row_def` object (an S3-classed list). This is accepted
-#'   anywhere a `row_spec` list is expected.
-#'
-#' @examples
-#' row_def(
-#'   id_col = "id",
-#'   display_cols = list(
-#'     display_col("name", "Name"),
-#'     display_col("grade", "Grade")
-#'   )
-#' )
-#'
-#' # With selection enabled
-#' row_def("id", list(display_col("name", "Name")), selectable = TRUE)
-#'
+#' @return A `row_def` object (an S3-classed list).
+#' @keywords internal
 #' @export
 row_def <- function(id_col, display_cols, selectable = NULL) {
+  if (!isTRUE(getOption("reactablePlus.suppress_deprecation"))) {
+    .Deprecated("table_config", package = "reactablePlus")
+  }
   if (missing(id_col) || !is.character(id_col) || length(id_col) != 1L) {
     stop("id_col must be a single character string.", call. = FALSE)
   }
@@ -117,54 +111,28 @@ row_def <- function(id_col, display_cols, selectable = NULL) {
 
 #' Define an editable input column
 #'
-#' Creates a column specification for use in the `col_spec` list
-#' passed to `editable_table_server()`. Each input column renders
-#' as an inline Shiny input (dropdown, numeric spinner, checkbox,
-#' toggle, date picker, or text field).
+#' @description
+#' `r lifecycle::badge("deprecated")`
 #'
-#' @param col_name Character. The column name used as the key in
-#'   collected data.
-#' @param label Character. The header label shown in the table.
+#' Use [widget_col()] instead. `widget_col()` accepts the same
+#' primitive types (`"dropdown"`, `"numeric"`, etc.) plus picker
+#' widgets, with type-specific options passed via `options = list(...)`.
+#'
+#' @param col_name Character. The column name.
+#' @param label Character. The header label.
 #' @param type Character. One of `"dropdown"`, `"numeric"`, `"date"`,
 #'   `"checkbox"`, `"toggle"`, or `"text"`.
-#' @param choices For `type = "dropdown"` only. Accepts three formats:
-#'   an unnamed character vector (`c("A", "B")` — label equals value),
-#'   a named character vector (`c("Label" = "value")` — names become
-#'   labels), or a list of lists (`list(list(label = "A", value = 1))`
-#'   — for non-character values). Normalized internally via
-#'   `normalize_choices()`.
+#' @param choices For `type = "dropdown"` only.
 #' @param min For `type = "numeric"`. Required minimum value.
 #' @param max For `type = "numeric"`. Optional maximum value.
 #' @param step For `type = "numeric"`. Optional step increment.
-#' @param min_date For `type = "date"`. Optional minimum date in
-#'   `"YYYY-MM-DD"` format.
-#' @param max_date For `type = "date"`. Optional maximum date in
-#'   `"YYYY-MM-DD"` format.
+#' @param min_date For `type = "date"`. Optional minimum date.
+#' @param max_date For `type = "date"`. Optional maximum date.
 #' @param max_chars For `type = "text"`. Optional maximum character count.
-#' @param gate Optional list of gating conditions that control when
-#'   this column is editable. See `validate_col_spec()` for the gate
-#'   structure.
+#' @param gate Optional list of gating conditions.
 #'
-#' @return An `input_col` object (an S3-classed list). This is accepted
-#'   anywhere a col_spec entry (bare list) is expected.
-#'
-#' @examples
-#' # Dropdown with simple choices
-#' input_col("role", "Role", "dropdown", choices = c("Analyst", "Engineer"))
-#'
-#' # Dropdown with label != value
-#' input_col("status", "Status", "dropdown",
-#'           choices = c("Active" = "active", "On Leave" = "leave"))
-#'
-#' # Numeric with range
-#' input_col("score", "Score", "numeric", min = 0, max = 100, step = 1)
-#'
-#' # Checkbox
-#' input_col("active", "Active", "checkbox")
-#'
-#' # Text with max length
-#' input_col("notes", "Notes", "text", max_chars = 500)
-#'
+#' @return An `input_col` object (an S3-classed list).
+#' @keywords internal
 #' @export
 input_col <- function(col_name,
                       label,
@@ -177,6 +145,9 @@ input_col <- function(col_name,
                       max_date  = NULL,
                       max_chars = NULL,
                       gate      = NULL) {
+  if (!isTRUE(getOption("reactablePlus.suppress_deprecation"))) {
+    .Deprecated("widget_col", package = "reactablePlus")
+  }
 
   supported_types <- c(
     "dropdown", "numeric", "date", "checkbox", "toggle", "text"

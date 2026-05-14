@@ -2,11 +2,12 @@
 
 #' Server function for the editable table Shiny module
 #'
-#' Renders a reactable table with one inline Shiny input per col_spec column
-#' per row. When row_spec$selectable is TRUE, a checkbox column is prepended
-#' and clicking anywhere in a row toggles that row's selection.
+#' @description
+#' `r lifecycle::badge("deprecated")`
 #'
-#' A Reset button wipes all inputs and clears all selections.
+#' Use [config_table_server()] instead. The raw-spec module is
+#' superseded by the config-driven module. See [table_config()] and
+#' [widget_col()] for the replacement API.
 #'
 #' @param id              A string. The module namespace ID.
 #' @param data_r          A reactive data frame containing at least the columns
@@ -28,6 +29,7 @@
 #'   \item{\code{selected_ids}}{A reactive vector of id_col values for checked
 #'     rows. \code{NULL} when \code{row_spec$selectable} is not TRUE.}
 #' }
+#' @keywords internal
 #' @export
 editable_table_server <- function(
   id,
@@ -37,6 +39,9 @@ editable_table_server <- function(
   existing_data_r = NULL,
   reactable_options = list()
 ) {
+  if (!isTRUE(getOption("reactablePlus.suppress_deprecation"))) {
+    .Deprecated("config_table_server", package = "reactablePlus")
+  }
   validate_row_spec(row_spec)
   col_spec <- validate_col_spec(col_spec, row_spec)
 

@@ -2,6 +2,10 @@
 # Sourced automatically by testthat before every test file.
 # All fixtures return fresh objects so tests cannot mutate shared state.
 
+# Suppress .Deprecated() warnings from the raw-spec API during testing.
+# Production callers still see the deprecation notice.
+options(reactablePlus.suppress_deprecation = TRUE)
+
 valid_row_spec <- function() {
   list(
     id_col       = "grade_id",
