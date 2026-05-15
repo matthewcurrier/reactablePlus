@@ -127,6 +127,15 @@ server-side typeahead search. Required when any column uses
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p><code>list(get_data = reactive, selected_ids = reactive)</code>.</p>
     </div>
+    <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+    <p>In appendable mode (<code>appendable = TRUE</code> in config), the module
+manages an auto-incrementing row key counter and responds to
+"Add Row" and per-row "Delete" button clicks. The table starts
+with <code>min_rows</code> blank rows. Adding is blocked at <code>max_rows</code> and
+deletion is blocked at <code>min_rows</code>. Reset clears back to <code>min_rows</code>
+blank rows with fresh keys.</p>
+    </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>

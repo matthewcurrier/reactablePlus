@@ -33,7 +33,11 @@ table_config(
   badge_render_fn = NULL,
   row_class_fn = NULL,
   year_col = NULL,
-  year_range = c(1990L, 2050L)
+  year_range = c(1990L, 2050L),
+  appendable = FALSE,
+  allow_delete = TRUE,
+  min_rows = 0L,
+  max_rows = NULL
 )
 ```
 
@@ -170,6 +174,35 @@ table_config(
 
   Integer vector of length 2, e.g. `c(1990, 2050)`.
 
+- appendable:
+
+  `logical(1)`. When `TRUE`, users can add and remove rows at runtime
+  through "Add Row" and per-row "Delete" buttons rendered by the module.
+  Mutually exclusive with dynamic mode (`row_id_col` must be `NULL`). In
+  appendable mode, `row_keys` and `row_labels` default to `character(0)`
+  — the table starts empty (or with `min_rows` blank rows) and grows as
+  the user adds entries. Default `FALSE`.
+
+- allow_delete:
+
+  `logical(1)`. When `TRUE` (and `appendable` is `TRUE`), each row shows
+  a "Delete" button. Deletion is prevented when the table is at
+  `min_rows`. Ignored when `appendable` is `FALSE`. Default `TRUE`.
+
+- min_rows:
+
+  `integer(1)`. The minimum number of rows the table maintains in
+  appendable mode. The module seeds this many blank rows on startup and
+  prevents deletion below this count. Must be non-negative. Ignored when
+  `appendable` is `FALSE`. Default `0L`.
+
+- max_rows:
+
+  `integer(1)` or `NULL`. The maximum number of rows allowed in
+  appendable mode. When non-`NULL`, the "Add Row" button is disabled
+  once the table reaches this count. Must be `>= min_rows` when both are
+  set. Ignored when `appendable` is `FALSE`. Default `NULL` (unlimited).
+
 ## Value
 
 A `table_config` list (S3 class `"table_config"`).
@@ -218,6 +251,18 @@ survive are preserved, new rows receive `empty_value` defaults, and
 departed rows' state is retained internally so it restores if those rows
 reappear.
 
+### Appendable mode
+
+When `appendable` is `TRUE`, the table becomes a variable-length input
+collector where the **user** controls the row set — adding blank rows,
+deleting individual rows, and optionally resetting to the minimum. This
+is mutually exclusive with dynamic mode.
+
+Row keys are generated automatically as `"row_1"`, `"row_2"`, …
+(incrementing, never reused in a session). The module renders "Add Row"
+and per-row "Delete" buttons. `min_rows` seeds the initial table and
+prevents deletion below that count. `max_rows` caps the upper bound.
+
 ## Examples
 
 ``` r
@@ -256,6 +301,29 @@ cfg_dyn <- table_config(
       id     = row_key,
       status = row_state$status %||% NA_character_,
       score  = row_state$score %||% NA_real_,
+      stringsAsFactors = FALSE
+    )
+  }
+)
+
+# Appendable mode — user adds and removes rows
+cfg_app <- table_config(
+  appendable = TRUE,
+  min_rows   = 1L,
+  max_rows   = 10L,
+  columns = list(
+    widget_col("fruit", "dropdown", "Fruit",
+      options = list(choices = c("Apple", "Banana", "Cherry"))
+    ),
+    widget_col("qty", "numeric", "Quantity",
+      options = list(min = 1, max = 100)
+    )
+  ),
+  show_reset = TRUE,
+  to_output_fn = function(row_state, row_key) {
+    data.frame(
+      fruit = row_state$fruit %||% NA_character_,
+      qty   = row_state$qty %||% NA_real_,
       stringsAsFactors = FALSE
     )
   }

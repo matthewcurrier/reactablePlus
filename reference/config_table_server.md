@@ -85,3 +85,11 @@ config_table_server(
 ## Value
 
 `list(get_data = reactive, selected_ids = reactive)`.
+
+## Details
+
+In appendable mode (`appendable = TRUE` in config), the module manages
+an auto-incrementing row key counter and responds to "Add Row" and
+per-row "Delete" button clicks. The table starts with `min_rows` blank
+rows. Adding is blocked at `max_rows` and deletion is blocked at
+`min_rows`. Reset clears back to `min_rows` blank rows with fresh keys.

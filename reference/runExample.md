@@ -31,6 +31,12 @@ runExample(example = NULL, port = NULL)
       notes_input, badge_render_fn, row_class_fn, mixing picker and
       primitive columns.
 
+  `"appendable"`
+
+  :   Appendable fruit order — user-managed rows with add/delete
+      buttons, min_rows/max_rows constraints, dropdown + numeric +
+      checkbox + text columns.
+
 - port:
 
   Integer. Port to run the app on. Default `NULL` (Shiny picks an
@@ -51,5 +57,6 @@ runExample()
 runExample("inventory")
 runExample("roster")
 runExample("evaluations")
+runExample("appendable")
 } # }
 ```

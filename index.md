@@ -16,13 +16,21 @@ building editable tables in Shiny applications.
 - **NotesInput** — inline text input with Shiny binding
 - **GearPopover** — settings gear icon with toggle switches
 
-### Generic editable table module
+### Config-driven editable table module
 
-A Shiny module (`editable_table_ui` / `editable_table_server`) driven by
-declarative `row_spec`, `col_spec`, and `table_config` objects. The
-module handles rendering, input collection, validation, selection
-gating, reset, and data marshaling without any domain-specific
-knowledge.
+A Shiny module (`config_table_ui` / `config_table_server`) driven by
+declarative `table_config` and `widget_col` objects. The module handles
+rendering, input collection, validation, selection gating, reset, and
+data marshaling without any domain-specific knowledge.
+
+Three row modes are supported:
+
+- **Static** — rows fixed at config time via `row_keys` / `row_labels`
+- **Dynamic** — rows derived from a reactive `source_data` data frame,
+  with state preservation across changes
+- **Appendable** — users add and remove rows at runtime through Add Row
+  / Delete buttons, with configurable `min_rows` and `max_rows`
+  constraints
 
 ## Installation
 

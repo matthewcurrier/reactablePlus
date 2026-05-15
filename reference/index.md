@@ -50,7 +50,10 @@ widget has a Shiny input binding, so its value is available via
 
 A Shiny module that renders an editable table from a declarative
 `table_config` object. Handles widget dispatch, mutual exclusion,
-fill-down, gear toggles, and data marshaling.
+fill-down, gear toggles, and data marshaling. Supports static, dynamic,
+and appendable (user-managed) row modes. See bundled demos via
+[`runExample()`](https://matthewcurrier.github.io/reactablePlus/reference/runExample.md):
+inventory, roster, evaluations, appendable.
 
 - [`config_table_ui()`](https://matthewcurrier.github.io/reactablePlus/reference/config_table_ui.md)
   : Config-driven Editable Table UI

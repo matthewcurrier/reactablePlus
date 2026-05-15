@@ -90,9 +90,10 @@ reactable from a
 [`table_config()`](https://matthewcurrier.github.io/reactablePlus/reference/table_config.md)
 object. Supports both primitive inputs (dropdown, numeric, date,
 checkbox, toggle, text) and popover picker widgets – with gating, row
-selection, reset, mutual exclusion, and fill-down. Tables can be static
-(rows fixed at config time) or dynamic (rows derived from a reactive
-`source_data` data frame, with state preservation across changes).
+selection, reset, mutual exclusion, and fill-down. Three row modes are
+available: static (rows fixed at config time), dynamic (rows derived
+from a reactive `source_data` data frame, with state preservation across
+changes), and appendable (users add and remove rows at runtime).
 
 ## Primitive input types
 
@@ -372,6 +373,62 @@ cfg <- table_config(
 )
 ```
 
+## Appendable tables (user-managed rows)
+
+Sometimes you don’t know the rows up front — you want the user to build
+the list themselves. Enable this with `appendable = TRUE`:
+
+``` r
+
+cfg <- table_config(
+  appendable = TRUE,
+  min_rows   = 1L,
+  max_rows   = 8L,
+  show_reset = TRUE,
+
+  columns = list(
+    widget_col("fruit", "dropdown", "Fruit",
+      options = list(choices = c(
+        "Apple" = "apple", "Banana" = "banana", "Cherry" = "cherry"
+      ))
+    ),
+    widget_col("qty", "numeric", "Qty",
+      options = list(min = 1, max = 100, step = 1)
+    ),
+    widget_col("notes", "text", "Notes",
+      options = list(placeholder = "Optional...")
+    )
+  ),
+
+  to_output_fn = function(row_state, row_key) {
+    data.frame(
+      fruit = row_state$fruit %||% NA_character_,
+      qty   = row_state$qty %||% NA_real_,
+      notes = row_state$notes %||% "",
+      stringsAsFactors = FALSE
+    )
+  }
+)
+```
+
+The module renders an “Add Row” button in the toolbar and a delete
+button (×) on each row. Row keys are auto-generated (`"row_1"`,
+`"row_2"`, …) and never reused within a session.
+
+Four parameters control the behavior:
+
+- `appendable = TRUE` — enables the mode (mutually exclusive with
+  dynamic mode)
+- `allow_delete = TRUE` — shows per-row delete buttons (default `TRUE`)
+- `min_rows` — seeds this many blank rows on startup and prevents
+  deletion below this count (default `0L`)
+- `max_rows` — disables “Add Row” once the table reaches this count
+  (default `NULL` for unlimited)
+
+Reset in appendable mode clears back to `min_rows` fresh blank rows. All
+existing features — gating, selection, gear toggles, `to_output_fn` —
+compose with appendable mode.
+
 ## Mid-session reset
 
 When the same table needs to switch between different data contexts
@@ -578,6 +635,8 @@ domain-specific apps customize appearance:
 - `year_col` / `year_range` – opt-in editable year spinner column
 - `row_id_col` / `row_label_col` / `row_label_fn` – dynamic row mode
 - `display_cols` – read-only columns from `source_data` (dynamic mode)
+- `appendable` / `allow_delete` / `min_rows` / `max_rows` – user-managed
+  row mode with add/delete buttons and row count constraints
 
 ## Grade utilities
 

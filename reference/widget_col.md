@@ -63,10 +63,18 @@ widget_col(
   `list(show_nces_id = TRUE)` for search picker, `list(sections = ...)`
   for attendance picker).
 
-  **dropdown**: `choices` (required — character vector, named character
-  vector, or list of `list(label, value)`; see
-  [`normalize_choices()`](https://matthewcurrier.github.io/reactablePlus/reference/normalize_choices.md)),
-  `placeholder` (default `"-- Select --"`).
+  **dropdown**: `choices` (character vector, named character vector, or
+  list of `list(label, value)`; see
+  [`normalize_choices()`](https://matthewcurrier.github.io/reactablePlus/reference/normalize_choices.md)).
+  Required unless `choices_fn` is provided. `placeholder` (default
+  `"-- Select --"`). `choices_fn` (optional function `(row_state)` -\>
+  choices; when provided, called at render time to compute choices
+  dynamically — the return value is normalized via
+  [`normalize_choices()`](https://matthewcurrier.github.io/reactablePlus/reference/normalize_choices.md)).
+  `choices_depends_on` (optional character vector of column IDs whose
+  changes should trigger a re-render so the cascading choices update;
+  columns listed here are auto-marked `triggers_rerender = TRUE` by
+  [`table_config()`](https://matthewcurrier.github.io/reactablePlus/reference/table_config.md)).
 
   **numeric**: `min` (required), `max`, `step`.
 
@@ -292,6 +300,79 @@ widget_col("school", "search_picker", "School", min_width = 300)
 #> 
 #> $empty_value
 #> NULL
+#> 
+#> $render_cell_fn
+#> NULL
+#> 
+#> $validate_fn
+#> NULL
+#> 
+#> attr(,"class")
+#> [1] "widget_col"
+
+# Cascading dropdown — choices depend on another column's value
+widget_col("city", "dropdown", "City",
+  options = list(
+    choices = c("-- pick a state first --"),
+    choices_fn = function(row_state) {
+      switch(row_state$state %||% "",
+        "CA" = c("LA" = "la", "SF" = "sf"),
+        "NY" = c("NYC" = "nyc", "Buffalo" = "buf"),
+        c("-- pick a state first --")
+      )
+    },
+    choices_depends_on = "state"
+  )
+)
+#> $id
+#> [1] "city"
+#> 
+#> $type
+#> [1] "dropdown"
+#> 
+#> $label
+#> [1] "City"
+#> 
+#> $width
+#> NULL
+#> 
+#> $min_width
+#> NULL
+#> 
+#> $options
+#> $options$choices
+#> $options$choices[[1]]
+#> $options$choices[[1]]$label
+#> [1] "-- pick a state first --"
+#> 
+#> $options$choices[[1]]$value
+#> [1] "-- pick a state first --"
+#> 
+#> 
+#> 
+#> $options$choices_fn
+#> function (row_state) 
+#> {
+#>     switch(row_state$state %||% "", CA = c(LA = "la", SF = "sf"), 
+#>         NY = c(NYC = "nyc", Buffalo = "buf"), c("-- pick a state first --"))
+#> }
+#> <environment: 0x55fd6e8567a0>
+#> 
+#> $options$choices_depends_on
+#> [1] "state"
+#> 
+#> 
+#> $gate
+#> NULL
+#> 
+#> $gear_toggle
+#> NULL
+#> 
+#> $triggers_rerender
+#> [1] FALSE
+#> 
+#> $empty_value
+#> [1] NA
 #> 
 #> $render_cell_fn
 #> NULL

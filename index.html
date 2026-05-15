@@ -77,9 +77,19 @@
 </ul>
 </div>
 <div class="section level3">
-<h3 id="generic-editable-table-module">Generic editable table module<a class="anchor" aria-label="anchor" href="#generic-editable-table-module"></a>
+<h3 id="config-driven-editable-table-module">Config-driven editable table module<a class="anchor" aria-label="anchor" href="#config-driven-editable-table-module"></a>
 </h3>
-<p>A Shiny module (<code>editable_table_ui</code> / <code>editable_table_server</code>) driven by declarative <code>row_spec</code>, <code>col_spec</code>, and <code>table_config</code> objects. The module handles rendering, input collection, validation, selection gating, reset, and data marshaling without any domain-specific knowledge.</p>
+<p>A Shiny module (<code>config_table_ui</code> / <code>config_table_server</code>) driven by declarative <code>table_config</code> and <code>widget_col</code> objects. The module handles rendering, input collection, validation, selection gating, reset, and data marshaling without any domain-specific knowledge.</p>
+<p>Three row modes are supported:</p>
+<ul>
+<li>
+<strong>Static</strong> — rows fixed at config time via <code>row_keys</code> / <code>row_labels</code>
+</li>
+<li>
+<strong>Dynamic</strong> — rows derived from a reactive <code>source_data</code> data frame, with state preservation across changes</li>
+<li>
+<strong>Appendable</strong> — users add and remove rows at runtime through Add Row / Delete buttons, with configurable <code>min_rows</code> and <code>max_rows</code> constraints</li>
+</ul>
 </div>
 </div>
 <div class="section level2">
