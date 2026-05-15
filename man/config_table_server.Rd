@@ -7,7 +7,9 @@
 config_table_server(
   id,
   config,
+  source_data = NULL,
   data_r = shiny::reactive(NULL),
+  reset_signal = NULL,
   search_fn = NULL
 )
 }
@@ -16,15 +18,48 @@ config_table_server(
 
 \item{config}{A \code{table_config} object.}
 
+\item{source_data}{Reactive returning a data frame, or \code{NULL}.
+Required in dynamic mode (\code{row_id_col} set in config). When
+\code{source_data()} changes, the module derives the current row set,
+preserves user-entered values for surviving rows, and assigns
+defaults to new rows. Ignored in static mode. Default \code{NULL}.}
+
 \item{data_r}{Reactive returning \code{NULL} (new/add mode) or a data frame
-(edit mode with saved rows).}
+(edit mode with saved rows). Seeds initial values via the config's
+\code{from_saved_fn}. In dynamic mode, applied on top of the
+\code{source_data}-derived row set.}
+
+\item{reset_signal}{Reactive returning \code{NULL} or a named list, or
+\code{NULL} to disable. When the reactive fires with a non-NULL list,
+the module replaces its internal state and forces a full re-render.
+Supported list fields:
+\describe{
+\item{\code{data}}{A data frame parsed via \code{from_saved_fn}, or \code{NULL}
+to reset all values to \code{empty_value} defaults.}
+\item{\code{selected}}{A character vector of row keys to mark as
+selected, or \code{NULL} to deselect all. Ignored when
+\code{selectable} is \code{FALSE}.}
+}
+This is the correct mechanism for mid-session context switches
+(e.g. opening Report B after Report A) where both column values
+and selection state need to be replaced atomically. The
+recommended calling pattern uses a \code{reactiveVal(NULL)} that is
+only set when a genuine switch occurs:
+\preformatted{
+    reset <- reactiveVal(NULL)
+    observeEvent(input$switch_report, {
+      reset(list(data = load_report(input$report_id),
+                 selected = NULL))
+    })
+    config_table_server("tbl", cfg, reset_signal = reset)
+  }}
 
 \item{search_fn}{A function \verb{(query, limit)} → data.frame for
 server-side typeahead search. Required when any column uses
 \code{search_picker} type. Default \code{NULL}.}
 }
 \value{
-\code{list(get_data = reactive)}.
+\code{list(get_data = reactive, selected_ids = reactive)}.
 }
 \description{
 Server function for the config-driven editable table module. Pairs

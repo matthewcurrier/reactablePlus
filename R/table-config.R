@@ -20,10 +20,44 @@
 #' and how cross-column interactions (mutual exclusion, fill-down,
 #' gating) work.
 #'
-#' @param row_keys Character vector of row identifiers (e.g. grade keys).
+#' Two modes are supported:
+#'
+#' **Static mode** (default): rows are fixed at config time via
+#' `row_keys` / `row_labels`. Use when the set of editable rows is
+#' known up front (e.g. a grade roster).
+#'
+#' **Dynamic mode**: rows are derived at runtime from a reactive
+#' `source_data` data frame passed to [config_table_server()]. Enable
+#' by supplying `row_id_col` and either `row_label_col` or
+#' `row_label_fn`. In this mode `row_keys` / `row_labels` are
+#' optional (default to `character(0)`).
+#'
+#' @param row_keys Character vector of row identifiers (e.g. grade
+#'   keys). Required in static mode. In dynamic mode, defaults to
+#'   `character(0)` — rows are derived from `source_data` at runtime.
 #' @param row_labels Character vector of display labels (same length as
-#'   `row_keys`).
+#'   `row_keys`). Required in static mode. In dynamic mode, defaults
+#'   to `character(0)` — labels are derived via `row_label_col` or
+#'   `row_label_fn`.
 #' @param columns List of column specs built with `widget_col()`.
+#' @param row_id_col `character(1)` or `NULL`. The name of the column
+#'   in `source_data` that uniquely identifies each row. When non-NULL
+#'   the config operates in dynamic mode. Default `NULL` (static mode).
+#' @param row_label_col `character(1)` or `NULL`. The name of the
+#'   column in `source_data` to use as the display label. Ignored when
+#'   `row_id_col` is `NULL`. Exactly one of `row_label_col` or
+#'   `row_label_fn` must be supplied in dynamic mode.
+#' @param row_label_fn `function` or `NULL`. A function
+#'   `(source_data_row)` -> `character(1)` that computes a display
+#'   label from a single row (a one-row data frame) of `source_data`.
+#'   Ignored when `row_id_col` is `NULL`. Exactly one of
+#'   `row_label_col` or `row_label_fn` must be supplied in dynamic
+#'   mode.
+#' @param display_cols List of [display_col()] specs, or `NULL`.
+#'   Read-only columns whose values are drawn from `source_data` in
+#'   dynamic mode. Displayed between the badge column and the editable
+#'   widget columns. Requires dynamic mode (`row_id_col` must be set).
+#'   Default `NULL` (no display columns).
 #' @param selectable Logical. If `TRUE`, a checkbox column is prepended
 #'   and row selection is tracked. Required when any column has a
 #'   `gate` condition with `type = "selected"`. Default `FALSE`.
@@ -79,10 +113,21 @@
 #' columns referenced in `gate` conditions are automatically marked
 #' `triggers_rerender = TRUE` so the table updates when they change.
 #'
+#' ## Dynamic mode
+#'
+#' When `row_id_col` is non-NULL, the config is in dynamic mode.
+#' Rows are not fixed at config time — they are derived from the
+#' `source_data` reactive at runtime. Each time `source_data`
+#' changes, the module merges the new row set with existing state:
+#' user-entered values for rows that survive are preserved, new rows
+#' receive `empty_value` defaults, and departed rows' state is
+#' retained internally so it restores if those rows reappear.
+#'
 #' @return A `table_config` list (S3 class `"table_config"`).
 #'
 #' @examples
 #' \dontrun{
+#' # Static mode — rows fixed at config time
 #' cfg <- table_config(
 #'   row_keys   = c("PK", "K", "01"),
 #'   row_labels = c("PreK", "K", "1st"),
@@ -97,13 +142,41 @@
 #'     sprintf('<span class="%s">%s</span>', css_class, row_label)
 #'   }
 #' )
+#'
+#' # Dynamic mode — rows derived from source_data at runtime
+#' cfg_dyn <- table_config(
+#'   row_id_col    = "student_id",
+#'   row_label_col = "student_name",
+#'   columns = list(
+#'     widget_col("status", "dropdown", "Status",
+#'       options = list(choices = c("Active", "Inactive"))
+#'     ),
+#'     widget_col("score", "numeric", "Score",
+#'       options = list(min = 0, max = 100)
+#'     )
+#'   ),
+#'   selectable = TRUE,
+#'   to_output_fn = function(row_state, row_key) {
+#'     data.frame(
+#'       id     = row_key,
+#'       status = row_state$status %||% NA_character_,
+#'       score  = row_state$score %||% NA_real_,
+#'       stringsAsFactors = FALSE
+#'     )
+#'   }
+#' )
 #' }
 #'
+#' @importFrom rlang `%||%`
 #' @export
 table_config <- function(
-  row_keys,
-  row_labels,
+  row_keys = NULL,
+  row_labels = NULL,
   columns,
+  row_id_col = NULL,
+  row_label_col = NULL,
+  row_label_fn = NULL,
+  display_cols = NULL,
   selectable = FALSE,
   show_reset = FALSE,
   gear_toggles = NULL,
@@ -119,12 +192,93 @@ table_config <- function(
   year_col = NULL,
   year_range = c(1990L, 2050L)
 ) {
+  stopifnot(is.list(columns))
+
+  dynamic <- !is.null(row_id_col)
+
+  # ── Mode validation ──────────────────────────────────────────────────────
+  if (dynamic) {
+    stopifnot(
+      is.character(row_id_col),
+      length(row_id_col) == 1L,
+      nzchar(row_id_col)
+    )
+    if (is.null(row_label_col) && is.null(row_label_fn)) {
+      stop(
+        "Dynamic mode (row_id_col is set) requires either ",
+        "row_label_col or row_label_fn.",
+        call. = FALSE
+      )
+    }
+    if (!is.null(row_label_col) && !is.null(row_label_fn)) {
+      stop(
+        "Supply row_label_col or row_label_fn, not both.",
+        call. = FALSE
+      )
+    }
+    if (!is.null(row_label_col)) {
+      stopifnot(
+        is.character(row_label_col),
+        length(row_label_col) == 1L,
+        nzchar(row_label_col)
+      )
+    }
+    if (!is.null(row_label_fn)) {
+      stopifnot(is.function(row_label_fn))
+    }
+    # Default row_keys / row_labels to empty in dynamic mode
+    row_keys <- row_keys %||% character(0)
+    row_labels <- row_labels %||% character(0)
+  } else {
+    # Static mode — row_keys and row_labels are required
+    if (is.null(row_keys) || is.null(row_labels)) {
+      stop(
+        "row_keys and row_labels are required in static mode ",
+        "(when row_id_col is NULL).",
+        call. = FALSE
+      )
+    }
+  }
+
   stopifnot(
     is.character(row_keys),
     is.character(row_labels),
-    length(row_keys) == length(row_labels),
-    is.list(columns)
+    length(row_keys) == length(row_labels)
   )
+
+  # ── Display column validation ────────────────────────────────────────────
+  if (!is.null(display_cols)) {
+    if (!dynamic) {
+      stop(
+        "display_cols requires dynamic mode (row_id_col must be set).",
+        call. = FALSE
+      )
+    }
+    if (!is.list(display_cols) || length(display_cols) == 0L) {
+      stop("display_cols must be a non-empty list of display_col() specs.",
+        call. = FALSE
+      )
+    }
+    purrr::walk(display_cols, function(dc) {
+      if (!inherits(dc, "display_col")) {
+        stop(
+          "Each element of display_cols must be created with display_col().",
+          call. = FALSE
+        )
+      }
+    })
+    # Check for ID collisions with widget columns
+    widget_ids <- purrr::map_chr(columns, "id")
+    display_ids <- purrr::map_chr(display_cols, "id")
+    overlap <- intersect(widget_ids, display_ids)
+    if (length(overlap) > 0L) {
+      stop(
+        "display_col IDs must not collide with widget_col IDs. ",
+        "Overlap: ", paste(overlap, collapse = ", "),
+        call. = FALSE
+      )
+    }
+  }
 
   label_map <- stats::setNames(as.list(row_labels), row_keys)
 
@@ -179,6 +333,11 @@ table_config <- function(
       row_keys = row_keys,
       row_labels = row_labels,
       label_map = label_map,
+      dynamic = dynamic,
+      row_id_col = row_id_col,
+      row_label_col = row_label_col,
+      row_label_fn = row_label_fn,
+      display_cols = display_cols,
       columns = columns,
       selectable = selectable,
       show_reset = show_reset,
@@ -422,6 +581,65 @@ widget_col <- function(
       validate_fn = validate_fn
     ),
     class = "widget_col"
+  )
+}
+
+
+# ── Display column specification ─────────────────────────────────────────────
+
+#' Build a read-only display column specification
+#'
+#' Defines a non-editable column whose values come from
+#' `source_data` in dynamic mode. Display columns provide context
+#' alongside editable `widget_col()` columns — e.g. an email address,
+#' department name, or enrollment date that the user can see but not
+#' edit.
+#'
+#' @param id `character(1)`. The name of the column in `source_data`
+#'   to display. Also used as the column key in the reactable data
+#'   frame.
+#' @param label `character(1)`. The column header text.
+#' @param width Integer or `NULL`. Fixed column width in pixels.
+#' @param min_width Integer or `NULL`. Minimum column width.
+#' @param render_fn Function or `NULL`. An optional custom cell
+#'   renderer `(value, row_key)` -> HTML string. When `NULL`
+#'   (the default), values are shown as plain escaped text.
+#'
+#' @return A `display_col` list (S3 class `"display_col"`).
+#'
+#' @examples
+#' display_col("email", "Email", width = 200)
+#' display_col("department", "Dept", min_width = 120)
+#' display_col("status", "Status", render_fn = function(value, row_key) {
+#'   cls <- if (identical(value, "active")) "badge-success" else "badge-muted"
+#'   sprintf('<span class="%s">%s</span>', cls, value)
+#' })
+#'
+#' @export
+display_col <- function(
+  id,
+  label,
+  width = NULL,
+  min_width = NULL,
+  render_fn = NULL
+) {
+  stopifnot(
+    is.character(id), length(id) == 1L, nzchar(id),
+    is.character(label), length(label) == 1L
+  )
+  if (!is.null(render_fn)) {
+    stopifnot(is.function(render_fn))
+  }
+
+  structure(
+    list(
+      id = id,
+      label = label,
+      width = width,
+      min_width = min_width,
+      render_fn = render_fn
+    ),
+    class = "display_col"
   )
 }
 

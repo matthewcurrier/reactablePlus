@@ -108,21 +108,48 @@
 
 
 #' Build the reactable data frame from config and current rows.
+#'
+#' @param config A `table_config` object.
+#' @param current_rows Named list of row states.
+#' @param settings Current gear settings.
+#' @param effective_keys Optional character vector. When non-NULL, used
+#'   instead of `config$row_keys` for ordering and scoping rows. Also
+#'   subsets `current_rows` to only these keys (important in dynamic
+#'   mode where `current_rows` may contain departed rows).
+#' @param effective_labels Optional character vector. When non-NULL,
+#'   used instead of `config$row_labels`.
+#' @param source_snapshot Optional data frame. The current
+#'   `source_data()` snapshot, used to extract display column values
+#'   in dynamic mode. Pass `NULL` in static mode.
+#'
 #' @noRd
-.build_table_df <- function(config, current_rows, settings) {
-  n <- length(config$row_keys)
+.build_table_df <- function(
+  config,
+  current_rows,
+  settings,
+  effective_keys = NULL,
+  effective_labels = NULL,
+  source_snapshot = NULL
+) {
+  row_keys <- effective_keys %||% config$row_keys
+  row_labels <- effective_labels %||% config$row_labels
+  n <- length(row_keys)
+
+  # Scope current_rows to only visible keys (in dynamic mode,
+  # current_rows may contain state for departed rows).
+  visible_rows <- current_rows[row_keys]
 
   # Start with row keys and labels
   tbl <- data.frame(
-    .row_key = config$row_keys,
-    .row_label = config$row_labels,
+    .row_key = row_keys,
+    .row_label = row_labels,
     stringsAsFactors = FALSE
   )
 
   # Selection column
   if (isTRUE(config$selectable)) {
     tbl$.selected <- vapply(
-      current_rows,
+      visible_rows,
       function(r) {
         if (!is.list(r)) {
           return(FALSE)
@@ -136,7 +163,7 @@
   # Year column
   if (!is.null(config$year_col)) {
     tbl[[config$year_col]] <- vapply(
-      current_rows,
+      visible_rows,
       function(r) {
         if (!is.list(r)) {
           return(NA_integer_)
@@ -152,12 +179,25 @@
     )
   }
 
+  # Display columns (read-only values from source_data)
+  if (!is.null(config$display_cols) && !is.null(source_snapshot)) {
+    src_ids <- as.character(source_snapshot[[config$row_id_col]])
+    match_idx <- match(row_keys, src_ids)
+
+    purrr::walk(config$display_cols, function(dc) {
+      raw_vals <- source_snapshot[[dc$id]]
+      tbl[[dc$id]] <<- if (!is.null(raw_vals)) {
+        as.character(raw_vals[match_idx])
+      } else {
+        rep(NA_character_, n)
+      }
+    })
+  }
+
   # Column values — primitive types get real values (enables sorting/filtering),
   # complex widget types get empty placeholders (cell fns render from current_rows).
-  # Column values — always include ALL columns (gear-toggled visibility
-  # is handled by CSS, not by omitting from the data frame).
-  # Primitive types get real values (enables sorting/filtering),
-  # complex widget types get empty placeholders (cell fns render from current_rows).
+  # Always include ALL columns (gear-toggled visibility is handled by CSS,
+  # not by omitting from the data frame).
 
   primitive_types <- c(
     "dropdown",
@@ -173,7 +213,7 @@
     config$columns,
     function(acc, cs) {
       if (cs$type %in% primitive_types) {
-        acc[[cs$id]] <- .extract_col_values(current_rows, cs)
+        acc[[cs$id]] <- .extract_col_values(visible_rows, cs)
       } else {
         acc[[cs$id]] <- rep("", n)
       }
@@ -236,8 +276,23 @@
 
 
 #' Build reactable colDef list from config.
+#'
+#' @param effective_keys Optional character vector of current row keys.
+#' @param effective_labels Optional character vector of current labels.
+#' @param source_snapshot Optional data frame. The current
+#'   `source_data()` snapshot, used for display column rendering.
+#'
 #' @noRd
-.build_col_defs <- function(config, ns, current_rows, settings, tbl) {
+.build_col_defs <- function(
+  config,
+  ns,
+  current_rows,
+  settings,
+  tbl,
+  effective_keys = NULL,
+  effective_labels = NULL,
+  source_snapshot = NULL
+) {
   col_defs <- list()
 
   # Row key (hidden)
@@ -288,6 +343,28 @@
     )
   } else {
     col_defs$.row_label <- reactable::colDef(show = FALSE)
+  }
+
+  # Display columns (read-only, from source_data)
+  if (!is.null(config$display_cols)) {
+    purrr::walk(config$display_cols, function(dc) {
+      col_args <- list(
+        name = dc$label,
+        sortable = FALSE
+      )
+      if (!is.null(dc$width)) col_args$width <- dc$width
+      if (!is.null(dc$min_width)) col_args$minWidth <- dc$min_width
+
+      if (!is.null(dc$render_fn)) {
+        col_args$html <- TRUE
+        col_args$cell <- function(value, index) {
+          gk <- tbl$.row_key[index]
+          dc$render_fn(value, gk)
+        }
+      }
+
+      col_defs[[dc$id]] <<- do.call(reactable::colDef, col_args)
+    })
   }
 
   # Year column

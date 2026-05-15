@@ -10,11 +10,11 @@ runExample(example = NULL, port = NULL)
 \item{example}{Character. The name of the example to run.
 Available examples:
 \describe{
-\item{\code{"inventory"}}{Product inventory tracker -- all 6 primitive
+\item{\code{"inventory"}}{Product inventory tracker — all 6 primitive
 input types, value-based gating, reset, badge column.}
-\item{\code{"roster"}}{Team roster -- row selection, chained
+\item{\code{"roster"}}{Team roster — row selection, chained
 selection + value gating, reset, selected_ids output.}
-\item{\code{"evaluations"}}{Student evaluations -- attendance_picker
+\item{\code{"evaluations"}}{Student evaluations — attendance_picker
 with custom sections, notes_input, badge_render_fn,
 row_class_fn, mixing picker and primitive columns.}
 }}

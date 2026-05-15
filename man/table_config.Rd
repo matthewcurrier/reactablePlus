@@ -5,9 +5,13 @@
 \title{Build a table configuration}
 \usage{
 table_config(
-  row_keys,
-  row_labels,
+  row_keys = NULL,
+  row_labels = NULL,
   columns,
+  row_id_col = NULL,
+  row_label_col = NULL,
+  row_label_fn = NULL,
+  display_cols = NULL,
   selectable = FALSE,
   show_reset = FALSE,
   gear_toggles = NULL,
@@ -25,12 +29,38 @@ table_config(
 )
 }
 \arguments{
-\item{row_keys}{Character vector of row identifiers (e.g. grade keys).}
+\item{row_keys}{Character vector of row identifiers (e.g. grade
+keys). Required in static mode. In dynamic mode, defaults to
+\code{character(0)} — rows are derived from \code{source_data} at runtime.}
 
 \item{row_labels}{Character vector of display labels (same length as
-\code{row_keys}).}
+\code{row_keys}). Required in static mode. In dynamic mode, defaults
+to \code{character(0)} — labels are derived via \code{row_label_col} or
+\code{row_label_fn}.}
 
 \item{columns}{List of column specs built with \code{widget_col()}.}
+
+\item{row_id_col}{\code{character(1)} or \code{NULL}. The name of the column
+in \code{source_data} that uniquely identifies each row. When non-NULL
+the config operates in dynamic mode. Default \code{NULL} (static mode).}
+
+\item{row_label_col}{\code{character(1)} or \code{NULL}. The name of the
+column in \code{source_data} to use as the display label. Ignored when
+\code{row_id_col} is \code{NULL}. Exactly one of \code{row_label_col} or
+\code{row_label_fn} must be supplied in dynamic mode.}
+
+\item{row_label_fn}{\code{function} or \code{NULL}. A function
+\code{(source_data_row)} -> \code{character(1)} that computes a display
+label from a single row (a one-row data frame) of \code{source_data}.
+Ignored when \code{row_id_col} is \code{NULL}. Exactly one of
+\code{row_label_col} or \code{row_label_fn} must be supplied in dynamic
+mode.}
+
+\item{display_cols}{List of \code{\link[=display_col]{display_col()}} specs, or \code{NULL}.
+Read-only columns whose values are drawn from \code{source_data} in
+dynamic mode. Displayed between the badge column and the editable
+widget columns. Requires dynamic mode (\code{row_id_col} must be set).
+Default \code{NULL} (no display columns).}
 
 \item{selectable}{Logical. If \code{TRUE}, a checkbox column is prepended
 and row selection is tracked. Required when any column has a
@@ -91,6 +121,17 @@ and how cross-column interactions (mutual exclusion, fill-down,
 gating) work.
 }
 \details{
+Two modes are supported:
+
+\strong{Static mode} (default): rows are fixed at config time via
+\code{row_keys} / \code{row_labels}. Use when the set of editable rows is
+known up front (e.g. a grade roster).
+
+\strong{Dynamic mode}: rows are derived at runtime from a reactive
+\code{source_data} data frame passed to \code{\link[=config_table_server]{config_table_server()}}. Enable
+by supplying \code{row_id_col} and either \code{row_label_col} or
+\code{row_label_fn}. In this mode \code{row_keys} / \code{row_labels} are
+optional (default to \code{character(0)}).
 \subsection{Interactions}{
 
 \code{interactions$mutual_exclusion}: a list of rules, each a list with
@@ -111,9 +152,21 @@ are automatically disabled until all conditions are met. Controller
 columns referenced in \code{gate} conditions are automatically marked
 \code{triggers_rerender = TRUE} so the table updates when they change.
 }
+
+\subsection{Dynamic mode}{
+
+When \code{row_id_col} is non-NULL, the config is in dynamic mode.
+Rows are not fixed at config time — they are derived from the
+\code{source_data} reactive at runtime. Each time \code{source_data}
+changes, the module merges the new row set with existing state:
+user-entered values for rows that survive are preserved, new rows
+receive \code{empty_value} defaults, and departed rows' state is
+retained internally so it restores if those rows reappear.
+}
 }
 \examples{
 \dontrun{
+# Static mode — rows fixed at config time
 cfg <- table_config(
   row_keys   = c("PK", "K", "01"),
   row_labels = c("PreK", "K", "1st"),
@@ -126,6 +179,29 @@ cfg <- table_config(
   badge_render_fn = function(row_key, row_label) {
     css_class <- paste0("grade-badge g-", row_key)
     sprintf('<span class="\%s">\%s</span>', css_class, row_label)
+  }
+)
+
+# Dynamic mode — rows derived from source_data at runtime
+cfg_dyn <- table_config(
+  row_id_col    = "student_id",
+  row_label_col = "student_name",
+  columns = list(
+    widget_col("status", "dropdown", "Status",
+      options = list(choices = c("Active", "Inactive"))
+    ),
+    widget_col("score", "numeric", "Score",
+      options = list(min = 0, max = 100)
+    )
+  ),
+  selectable = TRUE,
+  to_output_fn = function(row_state, row_key) {
+    data.frame(
+      id     = row_key,
+      status = row_state$status \%||\% NA_character_,
+      score  = row_state$score \%||\% NA_real_,
+      stringsAsFactors = FALSE
+    )
   }
 )
 }
