@@ -1,5 +1,6 @@
 <urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
 <url><loc>https://matthewcurrier.github.io/reactablePlus/404.html</loc></url>
+<url><loc>https://matthewcurrier.github.io/reactablePlus/articles/grade-entry.html</loc></url>
 <url><loc>https://matthewcurrier.github.io/reactablePlus/articles/index.html</loc></url>
 <url><loc>https://matthewcurrier.github.io/reactablePlus/articles/reactablePlus.html</loc></url>
 <url><loc>https://matthewcurrier.github.io/reactablePlus/authors.html</loc></url>
@@ -22,18 +23,20 @@
 <url><loc>https://matthewcurrier.github.io/reactablePlus/reference/index.html</loc></url>
 <url><loc>https://matthewcurrier.github.io/reactablePlus/reference/make_input_id.html</loc></url>
 <url><loc>https://matthewcurrier.github.io/reactablePlus/reference/merge_existing_data.html</loc></url>
+<url><loc>https://matthewcurrier.github.io/reactablePlus/reference/normalize_choices.html</loc></url>
 <url><loc>https://matthewcurrier.github.io/reactablePlus/reference/notesInput.html</loc></url>
 <url><loc>https://matthewcurrier.github.io/reactablePlus/reference/popoverDep.html</loc></url>
 <url><loc>https://matthewcurrier.github.io/reactablePlus/reference/reactablePlus-package.html</loc></url>
-<url><loc>https://matthewcurrier.github.io/reactablePlus/reference/schoolPickerInput.html</loc></url>
+<url><loc>https://matthewcurrier.github.io/reactablePlus/reference/runExample.html</loc></url>
+<url><loc>https://matthewcurrier.github.io/reactablePlus/reference/searchPickerInput.html</loc></url>
 <url><loc>https://matthewcurrier.github.io/reactablePlus/reference/table_config.html</loc></url>
 <url><loc>https://matthewcurrier.github.io/reactablePlus/reference/updateAttendancePickerInput.html</loc></url>
 <url><loc>https://matthewcurrier.github.io/reactablePlus/reference/updateGearPopoverInput.html</loc></url>
 <url><loc>https://matthewcurrier.github.io/reactablePlus/reference/updateHomeschoolPickerInput.html</loc></url>
 <url><loc>https://matthewcurrier.github.io/reactablePlus/reference/updateNotesInput.html</loc></url>
-<url><loc>https://matthewcurrier.github.io/reactablePlus/reference/updateSchoolPickerInput.html</loc></url>
+<url><loc>https://matthewcurrier.github.io/reactablePlus/reference/updateSearchPickerInput.html</loc></url>
 <url><loc>https://matthewcurrier.github.io/reactablePlus/reference/useReactablePlus.html</loc></url>
-<url><loc>https://matthewcurrier.github.io/reactablePlus/reference/useSchoolSearch.html</loc></url>
+<url><loc>https://matthewcurrier.github.io/reactablePlus/reference/useTypeaheadSearch.html</loc></url>
 <url><loc>https://matthewcurrier.github.io/reactablePlus/reference/validate_col_spec.html</loc></url>
 <url><loc>https://matthewcurrier.github.io/reactablePlus/reference/validate_row_inputs.html</loc></url>
 <url><loc>https://matthewcurrier.github.io/reactablePlus/reference/validate_row_spec.html</loc></url>

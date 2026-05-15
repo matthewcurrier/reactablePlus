@@ -2,9 +2,7 @@
 
 UI function for the config-driven editable table module. Works with
 [`table_config()`](https://matthewcurrier.github.io/reactablePlus/reference/table_config.md)
-objects and picker widgets, as opposed to the lower-level
-[`editable_table_ui()`](https://matthewcurrier.github.io/reactablePlus/reference/editable_table_ui.md)
-which uses raw `row_spec`/`col_spec` lists.
+objects and picker widgets.
 
 ## Usage
 
@@ -20,9 +18,7 @@ config_table_ui(id, config)
 
 - config:
 
-  A
-  [table_config](https://matthewcurrier.github.io/reactablePlus/reference/table_config.md)
-  object.
+  A `table_config` object.
 
 ## Value
 

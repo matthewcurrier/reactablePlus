@@ -10,9 +10,12 @@ input widgets with custom Shiny bindings.
 
 Useful links:
 
-- <https://github.com/OWNER/reactablePlus>
+- <https://github.com/matthewcurrier/reactablePlus>
 
-- Report bugs at <https://github.com/OWNER/reactablePlus/issues>
+- <https://matthewcurrier.github.io/reactablePlus/>
+
+- Report bugs at
+  <https://github.com/matthewcurrier/reactablePlus/issues>
 
 ## Author
 

@@ -19,7 +19,7 @@ interactive table with gating, row selection, reset, and live data output.
 
 ## Installation
 
-```{r}
+```{r install}
 # install.packages("pak")
 pak::pak("matthewcurrier/reactablePlus")
 ```
@@ -28,7 +28,7 @@ pak::pak("matthewcurrier/reactablePlus")
 
 A working editable table in under 30 lines:
 
-```{r}
+```{r quickstart}
 library(shiny)
 library(reactablePlus)
 
@@ -82,16 +82,16 @@ shinyApp(ui, server)
 reactablePlus is organized in two layers. Use either independently or
 combine them.
 
-**Layer 1 — Picker widgets.** Standalone Shiny inputs
-(`schoolPickerInput`, `attendancePickerInput`, `homeschoolPickerInput`,
+**Layer 1 -- Picker widgets.** Standalone Shiny inputs
+(`searchPickerInput`, `attendancePickerInput`, `homeschoolPickerInput`,
 `notesInput`, `gearPopoverInput`) with custom JS bindings. Use them
 anywhere you'd use a regular Shiny input.
 
-**Layer 2 — Config-driven table module.** A Shiny module
+**Layer 2 -- Config-driven table module.** A Shiny module
 (`config_table_ui` / `config_table_server`) that builds an editable
 reactable from a `table_config()` object. Supports both primitive
 inputs (dropdown, numeric, date, checkbox, toggle, text) and popover
-picker widgets — with gating, row selection, reset, mutual exclusion,
+picker widgets -- with gating, row selection, reset, mutual exclusion,
 and fill-down.
 
 
@@ -100,9 +100,9 @@ and fill-down.
 `widget_col()` supports six inline HTML input types. Type-specific
 options go in the `options` list.
 
-```{r}
+```{r primitives}
 columns <- list(
-  # Dropdown — choices can be a character vector, named vector, or
+  # Dropdown -- choices can be a character vector, named vector, or
   # list of list(label, value). All three are normalized internally.
   widget_col("status", "dropdown", "Status",
     options = list(
@@ -110,23 +110,23 @@ columns <- list(
     )
   ),
 
-  # Numeric — min is required; max and step are optional
+  # Numeric -- min is required; max and step are optional
   widget_col("hours", "numeric", "Hours",
     options = list(min = 0, max = 80, step = 0.5)
   ),
 
-  # Date — with optional bounds
+  # Date -- with optional bounds
   widget_col("start", "date", "Start Date",
     options = list(min_date = "2020-01-01", max_date = "2030-12-31")
   ),
 
-  # Checkbox — no extra options
+  # Checkbox -- no extra options
   widget_col("enrolled", "checkbox", "Enrolled"),
 
-  # Toggle — rendered as an on/off button
+  # Toggle -- rendered as an on/off button
   widget_col("billable", "toggle", "Billable"),
 
-  # Text — with optional max_chars and placeholder
+  # Text -- with optional max_chars and placeholder
   widget_col("notes", "text", "Notes",
     options = list(max_chars = 500, placeholder = "Enter notes...")
   )
@@ -138,18 +138,18 @@ columns <- list(
 All three are normalized via `normalize_choices()`. Use the simplest
 format that fits.
 
-```{r}
-# 1. Plain vector — label equals value
+```{r choices}
+# 1. Plain vector -- label equals value
 widget_col("color", "dropdown", "Color",
   options = list(choices = c("Red", "Blue", "Green"))
 )
 
-# 2. Named vector — names become display labels
+# 2. Named vector -- names become display labels
 widget_col("status", "dropdown", "Status",
   options = list(choices = c("Active" = "active", "On Leave" = "leave"))
 )
 
-# 3. List of lists — for non-character values
+# 3. List of lists -- for non-character values
 widget_col("rating", "dropdown", "Rating",
   options = list(choices = list(
     list(label = "Good", value = 3),
@@ -163,10 +163,10 @@ widget_col("rating", "dropdown", "Rating",
 ## Gating (conditional inputs)
 
 Use the `gate` parameter on `widget_col()` to lock a column until
-conditions are met. Gates are purely server-driven — no client-side
+conditions are met. Gates are purely server-driven -- no client-side
 JavaScript needed.
 
-```{r}
+```{r gating}
 cfg <- table_config(
   row_keys   = c("r1", "r2", "r3"),
   row_labels = c("Item A", "Item B", "Item C"),
@@ -198,11 +198,11 @@ cfg <- table_config(
 `table_config()` automatically marks controller columns (here,
 `"status"`) as `triggers_rerender = TRUE` so the table re-renders
 when they change. Gated values are enforced server-side in
-`get_data()` — a locked column's value is forced to its `empty_value`.
+`get_data()` -- a locked column's value is forced to its `empty_value`.
 
 Gates can also require row selection:
 
-```{r}
+```{r chained-gate}
 widget_col("priority", "dropdown", "Priority",
   options = list(choices = c("High", "Medium", "Low")),
   gate = list(
@@ -212,7 +212,7 @@ widget_col("priority", "dropdown", "Priority",
 )
 ```
 
-All conditions use AND logic — every condition must pass for the
+All conditions use AND logic -- every condition must pass for the
 input to unlock.
 
 
@@ -221,7 +221,7 @@ input to unlock.
 Enable row selection with `selectable = TRUE` and a reset button
 with `show_reset = TRUE`:
 
-```{r}
+```{r selection}
 cfg <- table_config(
   row_keys   = c("r1", "r2"),
   row_labels = c("Item A", "Item B"),
@@ -245,8 +245,8 @@ cfg <- table_config(
 # In the server:
 result <- config_table_server("demo", cfg)
 
-# result$get_data()     — reactive data frame with gate enforcement
-# result$selected_ids() — reactive character vector of selected row keys
+# result$get_data()     -- reactive data frame with gate enforcement
+# result$selected_ids() -- reactive character vector of selected row keys
 ```
 
 Reset clears all inputs to their `empty_value` and deselects all rows
@@ -255,16 +255,16 @@ in a single reactive flush.
 
 ## Picker widgets in tables
 
-For complex inputs — typeahead search, multi-field popovers, rating
-scales — use the picker widget types:
+For complex inputs -- typeahead search, multi-field popovers, rating
+scales -- use the picker widget types:
 
-```{r}
+```{r pickers}
 cfg <- table_config(
   row_keys   = c("PK", "K", "01"),
   row_labels = c("PreK", "K", "1st"),
 
   columns = list(
-    widget_col("school", "school_picker", "School", min_width = 300),
+    widget_col("school", "search_picker", "School", min_width = 300),
     widget_col("attendance", "attendance_picker", "Attendance", width = 200),
     widget_col("notes", "notes_input", "Notes", min_width = 150)
   ),
@@ -290,13 +290,13 @@ Picker widgets require `useReactablePlus()` in the UI (which
 Every picker widget works as a standalone Shiny input outside of
 tables. Call `useReactablePlus()` in your UI to load the JS and CSS.
 
-```{r}
+```{r standalone}
 library(shiny)
 library(reactablePlus)
 
 ui <- fluidPage(
   useReactablePlus(),
-  schoolPickerInput("my_school", grade_key = "PK",
+  searchPickerInput("my_school", grade_key = "PK",
                     grade_label = "PreK"),
   attendancePickerInput("my_att", grade_label = "PreK"),
   notesInput("my_notes", placeholder = "Type here...")
@@ -323,7 +323,7 @@ automatically.
 2. Wrap the reactable widget with `bindPickersOnRender()` to initialize
    input bindings after the table DOM is created.
 
-```{r}
+```{r custom-reactable}
 library(shiny)
 library(reactablePlus)
 
@@ -362,51 +362,27 @@ shinyApp(ui, server)
 `table_config()` provides hooks that keep the core module generic
 while letting domain-specific apps customize appearance:
 
-- `badge_col` / `badge_label` / `badge_render_fn` — opt-in label
+- `badge_col` / `badge_label` / `badge_render_fn` -- opt-in label
   column with custom rendering (e.g., grade badges with CSS classes)
-- `row_class_fn(row_key, row_state)` — custom CSS classes per row
-- `to_output_fn(row_state, row_key)` — marshal row state into a
+- `row_class_fn(row_key, row_state)` -- custom CSS classes per row
+- `to_output_fn(row_state, row_key)` -- marshal row state into a
   data frame for your output schema
-- `from_saved_fn(db_row, col_specs)` — parse saved data into row state
-- `toolbar_stats_fn(rows, row_keys)` — dynamic toolbar content
-- `year_col` / `year_range` — opt-in editable year spinner column
+- `from_saved_fn(db_row, col_specs)` -- parse saved data into row state
+- `toolbar_stats_fn(rows, row_keys)` -- dynamic toolbar content
+- `year_col` / `year_range` -- opt-in editable year spinner column
 
 
 ## Grade utilities
 
-For PreK–12 education apps, reactablePlus exports helper functions
+For PreK--12 education apps, reactablePlus exports helper functions
 in `grade-utils.R`:
 
-- `gradeChoices()` — named character vector of the 14-grade ladder
-- `gradeLabelMap()` — grade key → display label lookup
-- `gradeIndex()` — grade key → numeric index for ordering
-- `gradeInRange()` — check if a grade falls within a school's range
+- `gradeChoices()` -- named character vector of the 14-grade ladder
+- `gradeLabelMap()` -- grade key to display label lookup
+- `gradeIndex()` -- grade key to numeric index for ordering
+- `gradeInRange()` -- check if a grade falls within a school's range
 
 These are convenience exports, not required by the table infrastructure.
-
-
-## Migration from the raw-spec API
-
-The original `editable_table_ui()` / `editable_table_server()` module
-with `row_def()`, `display_col()`, and `input_col()` constructors is
-now deprecated. The config-driven API (`config_table_*`) supports all
-the same input types plus picker widgets, gating, selection, and reset
-with a simpler state model.
-
-Quick mapping:
-
-| Raw-spec | Config-driven |
-|---|---|
-| `row_def(id_col, display_cols)` | `table_config(row_keys, row_labels)` |
-| `display_col("name", "Name")` | included in `row_labels` |
-| `input_col("x", "X", "dropdown", choices = ...)` | `widget_col("x", "dropdown", "X", options = list(choices = ...))` |
-| `editable_table_ui("id")` | `config_table_ui("id", cfg)` |
-| `editable_table_server("id", data_r, row_spec, col_spec)` | `config_table_server("id", cfg)` |
-| `result$current_data` | `result$get_data()` |
-| `result$selected_ids` | `result$selected_ids()` |
-
-The deprecated functions still work and emit a warning pointing to
-the replacement. They will be removed in a future major release.
 
 
 ## Next steps

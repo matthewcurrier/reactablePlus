@@ -1,29 +1,22 @@
----
-title: "Using Config Table with reactablePlus"
-output: rmarkdown::html_vignette
-vignette: >
-  %\VignetteIndexEntry{Using Config Table with reactablePlus}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
----
+# Using Config Table with reactablePlus
 
-```{r setup, include = FALSE}
-knitr::opts_chunk$set(eval = FALSE, message = FALSE, warning = FALSE)
-```
-
-This article walks through a practical use case for `config_table`:
-a student grade entry form backed by a SQLite database. We define
-the table declaratively with `table_config()` and `widget_col()`,
+This article walks through a practical use case for `config_table`: a
+student grade entry form backed by a SQLite database. We define the
+table declaratively with
+[`table_config()`](https://matthewcurrier.github.io/reactablePlus/reference/table_config.md)
+and
+[`widget_col()`](https://matthewcurrier.github.io/reactablePlus/reference/widget_col.md),
 wire it into a Shiny app, and add persistence with a few helper
 functions.
 
 ## The table
 
-We want a table where a teacher can see each student-course pair,
-pick a letter grade from a dropdown, and optionally add notes. Three
-students, two courses, six rows.
+We want a table where a teacher can see each student-course pair, pick a
+letter grade from a dropdown, and optionally add notes. Three students,
+two courses, six rows.
 
-```{r roster}
+``` r
+
 library(shiny)
 library(reactablePlus)
 
@@ -42,12 +35,16 @@ roster <- data.frame(
 ```
 
 The `row_id` column uniquely identifies each row. `student_name` and
-`class_name` are display-only. `student_id` and `class_id` travel
-along silently -- we'll need them later for saving.
+`class_name` are display-only. `student_id` and `class_id` travel along
+silently – we’ll need them later for saving.
 
-Now define the table with `table_config()` and `widget_col()`.
+Now define the table with
+[`table_config()`](https://matthewcurrier.github.io/reactablePlus/reference/table_config.md)
+and
+[`widget_col()`](https://matthewcurrier.github.io/reactablePlus/reference/widget_col.md).
 
-```{r config}
+``` r
+
 cfg <- table_config(
   row_keys   = roster$row_id,
   row_labels = paste(roster$student_name, "--", roster$class_name),
@@ -96,13 +93,14 @@ cfg <- table_config(
 )
 ```
 
-The grade choices are a plain character vector -- the simplest format.
-`normalize_choices()` converts them internally so label and value are
-the same string.
+The grade choices are a plain character vector – the simplest format.
+[`normalize_choices()`](https://matthewcurrier.github.io/reactablePlus/reference/normalize_choices.md)
+converts them internally so label and value are the same string.
 
 Wire it into a minimal app.
 
-```{r minimal-app}
+``` r
+
 ui <- fluidPage(
   titlePanel("Student Grade Entry"),
   config_table_ui("grades", cfg)
@@ -115,19 +113,19 @@ server <- function(input, output, session) {
 shinyApp(ui, server)
 ```
 
-That's a working editable table with a reset button. Every row gets
-a grade dropdown and a notes field, rendered inline in a reactable.
-The module handles input wiring, state tracking, and data collection.
+That’s a working editable table with a reset button. Every row gets a
+grade dropdown and a notes field, rendered inline in a reactable. The
+module handles input wiring, state tracking, and data collection.
 
-But the data disappears when the app restarts. Let's fix that.
-
+But the data disappears when the app restarts. Let’s fix that.
 
 ## Adding a database
 
-We'll use a single SQLite table to store grade entries. One row per
+We’ll use a single SQLite table to store grade entries. One row per
 student-course pair, with an auto-incrementing ID.
 
-```{r create-db}
+``` r
+
 library(DBI)
 library(RSQLite)
 
@@ -154,16 +152,16 @@ create_database()
 ```
 
 The `UNIQUE(student_id, class_id)` constraint means each student can
-have at most one grade per course. We'll use this for upserts when
+have at most one grade per course. We’ll use this for upserts when
 saving.
-
 
 ## Loading saved grades
 
 When the app starts, we check if any grades were saved previously and
 feed them back into the table via `data_r`.
 
-```{r load-existing}
+``` r
+
 load_existing <- function(con, roster) {
   saved <- dbReadTable(con, "student_grades")
   if (nrow(saved) == 0) return(NULL)
@@ -174,17 +172,17 @@ load_existing <- function(con, roster) {
 }
 ```
 
-The `from_saved_fn` we defined in the config handles parsing each
-saved row into the column state that `config_table_server` expects.
-
+The `from_saved_fn` we defined in the config handles parsing each saved
+row into the column state that `config_table_server` expects.
 
 ## Saving grades
 
-When the teacher clicks Save, we read the module's `get_data()`
-reactive -- a data frame with `row_id`, `grade`, and `notes` -- and
-upsert each row into the database.
+When the teacher clicks Save, we read the module’s `get_data()` reactive
+– a data frame with `row_id`, `grade`, and `notes` – and upsert each row
+into the database.
 
-```{r save-grades}
+``` r
+
 save_grades <- function(con, current_data, roster) {
   if (is.null(current_data) || nrow(current_data) == 0) return()
 
@@ -217,12 +215,12 @@ save_grades <- function(con, current_data, roster) {
 }
 ```
 
-
 ## The complete app
 
 Everything wired together.
 
-```{r complete-app}
+``` r
+
 library(shiny)
 library(reactablePlus)
 library(DBI)
@@ -354,19 +352,22 @@ shinyApp(ui, server)
 ```
 
 Run `create_database()` once, then launch the app. Pick grades, add
-notes, click Save. Restart the app -- your entries are still there.
-
+notes, click Save. Restart the app – your entries are still there.
 
 ## What the module handles for you
 
-This six-row table has 12 inputs (6 dropdowns + 6 text fields). A
-table with 30 students and 5 courses would have 300. Without
-`config_table_server()`, you'd build and track each one manually,
-synchronize them with the reactable display, and collect all the
-values back into a data frame yourself. The module reduces that to
-a `table_config()`, a couple of `widget_col()` calls, and a reactive.
+This six-row table has 12 inputs (6 dropdowns + 6 text fields). A table
+with 30 students and 5 courses would have 300. Without
+[`config_table_server()`](https://matthewcurrier.github.io/reactablePlus/reference/config_table_server.md),
+you’d build and track each one manually, synchronize them with the
+reactable display, and collect all the values back into a data frame
+yourself. The module reduces that to a
+[`table_config()`](https://matthewcurrier.github.io/reactablePlus/reference/table_config.md),
+a couple of
+[`widget_col()`](https://matthewcurrier.github.io/reactablePlus/reference/widget_col.md)
+calls, and a reactive.
 
-The pattern shown here -- load from a database, edit in a table,
-save back -- generalizes to any domain: inventory management, survey
-responses, data annotation, scheduling, or anywhere you need
-structured inline editing in Shiny.
+The pattern shown here – load from a database, edit in a table, save
+back – generalizes to any domain: inventory management, survey
+responses, data annotation, scheduling, or anywhere you need structured
+inline editing in Shiny.

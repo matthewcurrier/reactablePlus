@@ -5,12 +5,12 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Using config_table with reactablePlus • reactablePlus</title>
+<title>Using Config Table with reactablePlus • reactablePlus</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Using config_table with reactablePlus">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Using Config Table with reactablePlus">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -34,7 +34,7 @@
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/grade-entry.html">Using config_table with reactablePlus</a></li>
+<li><a class="dropdown-item" href="../articles/grade-entry.html">Using Config Table with reactablePlus</a></li>
   </ul>
 </li>
       </ul>
@@ -56,7 +56,7 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
 
-      <h1>Using config_table with reactablePlus</h1>
+      <h1>Using Config Table with reactablePlus</h1>
             
       
       <small class="dont-index">Source: <a href="https://github.com/matthewcurrier/reactablePlus/blob/HEAD/vignettes/articles/grade-entry.Rmd" class="external-link"><code>vignettes/articles/grade-entry.Rmd</code></a></small>
@@ -92,35 +92,16 @@ students, two courses, six rows.</p>
 <span>  class_id     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fl">2L</span>, <span class="fl">1L</span>, <span class="fl">2L</span>, <span class="fl">1L</span>, <span class="fl">2L</span><span class="op">)</span>,</span>
 <span>  stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## </span></span>
-<span><span class="co">## Attaching package: 'dplyr'</span></span></code></pre>
-<pre><code><span><span class="co">## The following objects are masked from 'package:stats':</span></span>
-<span><span class="co">## </span></span>
-<span><span class="co">##     filter, lag</span></span></code></pre>
-<pre><code><span><span class="co">## The following objects are masked from 'package:base':</span></span>
-<span><span class="co">## </span></span>
-<span><span class="co">##     intersect, setdiff, setequal, union</span></span></code></pre>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://pillar.r-lib.org/reference/glimpse.html" class="external-link">glimpse</a></span><span class="op">(</span><span class="va">roster</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## Rows: 6</span></span>
-<span><span class="co">## Columns: 5</span></span>
-<span><span class="co">## $ row_id       <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> "s1_c1"<span style="color: #949494;">, </span>"s1_c2"<span style="color: #949494;">, </span>"s2_c1"<span style="color: #949494;">, </span>"s2_c2"<span style="color: #949494;">, </span>"s3_c1"<span style="color: #949494;">, </span>"s3_c2"</span></span>
-<span><span class="co">## $ student_name <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> "Amara Johnson"<span style="color: #949494;">, </span>"Amara Johnson"<span style="color: #949494;">, </span>"Ben Martinez"<span style="color: #949494;">, </span>"Ben Ma…</span></span>
-<span><span class="co">## $ class_name   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> "Geometry"<span style="color: #949494;">, </span>"Literature"<span style="color: #949494;">, </span>"Geometry"<span style="color: #949494;">, </span>"Literature"<span style="color: #949494;">, </span>"Geom…</span></span>
-<span><span class="co">## $ student_id   <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> 1<span style="color: #949494;">, </span>1<span style="color: #949494;">, </span>2<span style="color: #949494;">, </span>2<span style="color: #949494;">, </span>3<span style="color: #949494;">, </span>3</span></span>
-<span><span class="co">## $ class_id     <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> 1<span style="color: #949494;">, </span>2<span style="color: #949494;">, </span>1<span style="color: #949494;">, </span>2<span style="color: #949494;">, </span>1<span style="color: #949494;">, </span>2</span></span></code></pre>
 <p>The <code>row_id</code> column uniquely identifies each row.
 <code>student_name</code> and <code>class_name</code> are display-only.
 <code>student_id</code> and <code>class_id</code> travel along silently
-— we’ll need them later for saving.</p>
+– we’ll need them later for saving.</p>
 <p>Now define the table with <code><a href="../reference/table_config.html">table_config()</a></code> and
 <code><a href="../reference/widget_col.html">widget_col()</a></code>.</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">cfg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/table_config.html">table_config</a></span><span class="op">(</span></span>
 <span>  row_keys   <span class="op">=</span> <span class="va">roster</span><span class="op">$</span><span class="va">row_id</span>,</span>
-<span>  row_labels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="va">roster</span><span class="op">$</span><span class="va">student_name</span>, <span class="st">"—"</span>, <span class="va">roster</span><span class="op">$</span><span class="va">class_name</span><span class="op">)</span>,</span>
+<span>  row_labels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="va">roster</span><span class="op">$</span><span class="va">student_name</span>, <span class="st">"--"</span>, <span class="va">roster</span><span class="op">$</span><span class="va">class_name</span><span class="op">)</span>,</span>
 <span></span>
 <span>  columns <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>    <span class="fu"><a href="../reference/widget_col.html">widget_col</a></span><span class="op">(</span><span class="st">"grade"</span>, <span class="st">"dropdown"</span>, <span class="st">"Grade"</span>,</span>
@@ -164,11 +145,11 @@ students, two courses, six rows.</p>
 <span>    <span class="op">)</span></span>
 <span>  <span class="op">}</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>The grade choices are a plain character vector — the simplest format.
+<p>The grade choices are a plain character vector – the simplest format.
 <code><a href="../reference/normalize_choices.html">normalize_choices()</a></code> converts them internally so label and
 value are the same string.</p>
 <p>Wire it into a minimal app.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html" class="external-link">fluidPage</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/titlePanel.html" class="external-link">titlePanel</a></span><span class="op">(</span><span class="st">"Student Grade Entry"</span><span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="../reference/config_table_ui.html">config_table_ui</a></span><span class="op">(</span><span class="st">"grades"</span>, <span class="va">cfg</span><span class="op">)</span></span>
@@ -179,7 +160,6 @@ value are the same string.</p>
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span></span></code></pre></div>
-<div style="width: 100% ; height: 400px ; text-align: center; box-sizing: border-box; -moz-box-sizing: border-box; -webkit-box-sizing: border-box;" class="muted well">Shiny applications not supported in static R Markdown documents</div>
 <p>That’s a working editable table with a reset button. Every row gets a
 grade dropdown and a notes field, rendered inline in a reactable. The
 module handles input wiring, state tracking, and data collection.</p>
@@ -190,7 +170,7 @@ module handles input wiring, state tracking, and data collection.</p>
 </h2>
 <p>We’ll use a single SQLite table to store grade entries. One row per
 student-course pair, with an auto-incrementing ID.</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dbi.r-dbi.org" class="external-link">DBI</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://rsqlite.r-dbi.org" class="external-link">RSQLite</a></span><span class="op">)</span></span>
 <span></span>
@@ -214,7 +194,6 @@ student-course pair, with an auto-incrementing ID.</p>
 <span></span>
 <span><span class="co"># Run once</span></span>
 <span><span class="fu">create_database</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## Database created at: grades.sqlite</span></span></code></pre>
 <p>The <code>UNIQUE(student_id, class_id)</code> constraint means each
 student can have at most one grade per course. We’ll use this for
 upserts when saving.</p>
@@ -224,7 +203,7 @@ upserts when saving.</p>
 </h2>
 <p>When the app starts, we check if any grades were saved previously and
 feed them back into the table via <code>data_r</code>.</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">load_existing</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">con</span>, <span class="va">roster</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">saved</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dbi.r-dbi.org/reference/dbReadTable.html" class="external-link">dbReadTable</a></span><span class="op">(</span><span class="va">con</span>, <span class="st">"student_grades"</span><span class="op">)</span></span>
 <span>  <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">saved</span><span class="op">)</span> <span class="op">==</span> <span class="fl">0</span><span class="op">)</span> <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span></span>
@@ -241,10 +220,10 @@ parsing each saved row into the column state that
 <h2 id="saving-grades">Saving grades<a class="anchor" aria-label="anchor" href="#saving-grades"></a>
 </h2>
 <p>When the teacher clicks Save, we read the module’s
-<code>get_data()</code> reactive — a data frame with
-<code>row_id</code>, <code>grade</code>, and <code>notes</code> — and
+<code>get_data()</code> reactive – a data frame with
+<code>row_id</code>, <code>grade</code>, and <code>notes</code> – and
 upsert each row into the database.</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">save_grades</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">con</span>, <span class="va">current_data</span>, <span class="va">roster</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">current_data</span><span class="op">)</span> <span class="op">||</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">current_data</span><span class="op">)</span> <span class="op">==</span> <span class="fl">0</span><span class="op">)</span> <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
@@ -280,14 +259,14 @@ upsert each row into the database.</p>
 <h2 id="the-complete-app">The complete app<a class="anchor" aria-label="anchor" href="#the-complete-app"></a>
 </h2>
 <p>Everything wired together.</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://shiny.posit.co/" class="external-link">shiny</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/matthewcurrier/reactablePlus" class="external-link">reactablePlus</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dbi.r-dbi.org" class="external-link">DBI</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://rsqlite.r-dbi.org" class="external-link">RSQLite</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># ── Roster ────────────────────────────────────────────────────────────</span></span>
+<span><span class="co"># -- Roster -------------------------------------------------------------------</span></span>
 <span><span class="va">roster</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
 <span>  row_id       <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"s1_c1"</span>, <span class="st">"s1_c2"</span>, <span class="st">"s2_c1"</span>, <span class="st">"s2_c2"</span>, <span class="st">"s3_c1"</span>, <span class="st">"s3_c2"</span><span class="op">)</span>,</span>
 <span>  student_name <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Amara Johnson"</span>, <span class="st">"Amara Johnson"</span>,</span>
@@ -301,10 +280,10 @@ upsert each row into the database.</p>
 <span>  stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># ── Config ────────────────────────────────────────────────────────────</span></span>
+<span><span class="co"># -- Config -------------------------------------------------------------------</span></span>
 <span><span class="va">cfg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/table_config.html">table_config</a></span><span class="op">(</span></span>
 <span>  row_keys   <span class="op">=</span> <span class="va">roster</span><span class="op">$</span><span class="va">row_id</span>,</span>
-<span>  row_labels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="va">roster</span><span class="op">$</span><span class="va">student_name</span>, <span class="st">"\u2014"</span>, <span class="va">roster</span><span class="op">$</span><span class="va">class_name</span><span class="op">)</span>,</span>
+<span>  row_labels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="va">roster</span><span class="op">$</span><span class="va">student_name</span>, <span class="st">"--"</span>, <span class="va">roster</span><span class="op">$</span><span class="va">class_name</span><span class="op">)</span>,</span>
 <span></span>
 <span>  columns <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>    <span class="fu"><a href="../reference/widget_col.html">widget_col</a></span><span class="op">(</span><span class="st">"grade"</span>, <span class="st">"dropdown"</span>, <span class="st">"Grade"</span>,</span>
@@ -344,7 +323,7 @@ upsert each row into the database.</p>
 <span>  <span class="op">}</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># ── Helpers ───────────────────────────────────────────────────────────</span></span>
+<span><span class="co"># -- Helpers ------------------------------------------------------------------</span></span>
 <span><span class="va">load_existing</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">con</span>, <span class="va">roster</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">saved</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dbi.r-dbi.org/reference/dbReadTable.html" class="external-link">dbReadTable</a></span><span class="op">(</span><span class="va">con</span>, <span class="st">"student_grades"</span><span class="op">)</span></span>
 <span>  <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">saved</span><span class="op">)</span> <span class="op">==</span> <span class="fl">0</span><span class="op">)</span> <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span></span>
@@ -385,7 +364,7 @@ upsert each row into the database.</p>
 <span>  <span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="co"># ── App ───────────────────────────────────────────────────────────────</span></span>
+<span><span class="co"># -- App ----------------------------------------------------------------------</span></span>
 <span><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html" class="external-link">fluidPage</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/titlePanel.html" class="external-link">titlePanel</a></span><span class="op">(</span><span class="st">"Student Grade Entry"</span><span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="../reference/config_table_ui.html">config_table_ui</a></span><span class="op">(</span><span class="st">"grades"</span>, <span class="va">cfg</span><span class="op">)</span>,</span>
@@ -409,9 +388,8 @@ upsert each row into the database.</p>
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span></span></code></pre></div>
-<div style="width: 100% ; height: 400px ; text-align: center; box-sizing: border-box; -moz-box-sizing: border-box; -webkit-box-sizing: border-box;" class="muted well">Shiny applications not supported in static R Markdown documents</div>
 <p>Run <code>create_database()</code> once, then launch the app. Pick
-grades, add notes, click Save. Restart the app — your entries are still
+grades, add notes, click Save. Restart the app – your entries are still
 there.</p>
 </div>
 <div class="section level2">
@@ -424,8 +402,8 @@ manually, synchronize them with the reactable display, and collect all
 the values back into a data frame yourself. The module reduces that to a
 <code><a href="../reference/table_config.html">table_config()</a></code>, a couple of <code><a href="../reference/widget_col.html">widget_col()</a></code>
 calls, and a reactive.</p>
-<p>The pattern shown here — load from a database, edit in a table, save
-back — generalizes to any domain: inventory management, survey
+<p>The pattern shown here – load from a database, edit in a table, save
+back – generalizes to any domain: inventory management, survey
 responses, data annotation, scheduling, or anywhere you need structured
 inline editing in Shiny.</p>
 </div>

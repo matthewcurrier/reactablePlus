@@ -29,7 +29,7 @@ only the school-history-specific configuration and demo apps.
 |----|----|
 | `col_spec()` | [`widget_col()`](https://matthewcurrier.github.io/reactablePlus/reference/widget_col.md) |
 | `editable_table_ui(id, config)` | `config_table_ui(id, config)` |
-| [`editable_table_server()`](https://matthewcurrier.github.io/reactablePlus/reference/editable_table_server.md) | [`config_table_server()`](https://matthewcurrier.github.io/reactablePlus/reference/config_table_server.md) |
+| `editable_table_server()` | [`config_table_server()`](https://matthewcurrier.github.io/reactablePlus/reference/config_table_server.md) |
 | [`useSchoolHistory()`](https://matthewcurrier.github.io/reactablePlus/reference/useReactablePlus.md) | [`useReactablePlus()`](https://matthewcurrier.github.io/reactablePlus/reference/useReactablePlus.md) |
 
 ### In `school-history-preset.R`
@@ -81,8 +81,8 @@ school_history_server <- function(id, ...) {
 
 Replace all instances of: -
 [`library(schoolhistory)`](https://rdrr.io/r/base/library.html) →
-[`library(reactablePlus)`](https://github.com/OWNER/reactablePlus) (or
-add both) -
+[`library(reactablePlus)`](https://github.com/matthewcurrier/reactablePlus)
+(or add both) -
 [`useSchoolHistory()`](https://matthewcurrier.github.io/reactablePlus/reference/useReactablePlus.md)
 →
 [`useReactablePlus()`](https://matthewcurrier.github.io/reactablePlus/reference/useReactablePlus.md) -

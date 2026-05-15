@@ -4,7 +4,7 @@ pkgdown_sha: ~
 articles:
   articles/grade-entry: grade-entry.html
   articles/reactablePlus: reactablePlus.html
-last_built: 2026-05-14T23:36Z
+last_built: 2026-05-15T00:04Z
 urls:
   reference: https://matthewcurrier.github.io/reactablePlus/reference
   article: https://matthewcurrier.github.io/reactablePlus/articles

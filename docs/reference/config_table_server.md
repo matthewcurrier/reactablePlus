@@ -26,9 +26,7 @@ config_table_server(
 
 - config:
 
-  A
-  [table_config](https://matthewcurrier.github.io/reactablePlus/reference/table_config.md)
-  object.
+  A `table_config` object.
 
 - data_r:
 
@@ -38,7 +36,7 @@ config_table_server(
 - search_fn:
 
   A function `(query, limit)` → data.frame for server-side typeahead
-  search. Required when any column uses `school_picker` type. Default
+  search. Required when any column uses `search_picker` type. Default
   `NULL`.
 
 ## Value

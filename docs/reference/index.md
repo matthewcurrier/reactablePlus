@@ -11,6 +11,8 @@ Load widget dependencies and wire picker bindings inside reactable.
   : Popover core dependency (shared JS + CSS)
 - [`bindPickersOnRender()`](https://matthewcurrier.github.io/reactablePlus/reference/bindPickersOnRender.md)
   : Bind picker inputs after a reactable renders
+- [`runExample()`](https://matthewcurrier.github.io/reactablePlus/reference/runExample.md)
+  : Run a reactablePlus example app
 
 ## Picker Widgets
 
@@ -18,12 +20,15 @@ Input constructors and update functions for inline cell editors. Each
 widget has a Shiny input binding, so its value is available via
 `input$<id>` on the server side.
 
-- [`schoolPickerInput()`](https://matthewcurrier.github.io/reactablePlus/reference/schoolPickerInput.md)
-  : School picker input
-- [`updateSchoolPickerInput()`](https://matthewcurrier.github.io/reactablePlus/reference/updateSchoolPickerInput.md)
-  : Update a school picker from the server
-- [`useSchoolSearch()`](https://matthewcurrier.github.io/reactablePlus/reference/useSchoolSearch.md)
-  : Wire up server-side school search
+- [`searchPickerInput()`](https://matthewcurrier.github.io/reactablePlus/reference/searchPickerInput.md)
+  [`schoolPickerInput()`](https://matthewcurrier.github.io/reactablePlus/reference/searchPickerInput.md)
+  : Search picker input
+- [`updateSearchPickerInput()`](https://matthewcurrier.github.io/reactablePlus/reference/updateSearchPickerInput.md)
+  [`updateSchoolPickerInput()`](https://matthewcurrier.github.io/reactablePlus/reference/updateSearchPickerInput.md)
+  : Update a search picker from the server
+- [`useTypeaheadSearch()`](https://matthewcurrier.github.io/reactablePlus/reference/useTypeaheadSearch.md)
+  [`useSchoolSearch()`](https://matthewcurrier.github.io/reactablePlus/reference/useTypeaheadSearch.md)
+  : Wire up server-side typeahead search
 - [`attendancePickerInput()`](https://matthewcurrier.github.io/reactablePlus/reference/attendancePickerInput.md)
   : Attendance picker input
 - [`updateAttendancePickerInput()`](https://matthewcurrier.github.io/reactablePlus/reference/updateAttendancePickerInput.md)
@@ -43,9 +48,9 @@ widget has a Shiny input binding, so its value is available via
 
 ## Config-Driven Table Module
 
-A higher-level Shiny module that renders an editable table from a
-declarative `table_config` object. Handles widget dispatch, mutual
-exclusion, fill-down, gear toggles, and data marshaling.
+A Shiny module that renders an editable table from a declarative
+`table_config` object. Handles widget dispatch, mutual exclusion,
+fill-down, gear toggles, and data marshaling.
 
 - [`config_table_ui()`](https://matthewcurrier.github.io/reactablePlus/reference/config_table_ui.md)
   : Config-driven Editable Table UI
@@ -55,34 +60,14 @@ exclusion, fill-down, gear toggles, and data marshaling.
   : Build a table configuration
 - [`widget_col()`](https://matthewcurrier.github.io/reactablePlus/reference/widget_col.md)
   : Build a widget column specification
-
-## Raw-Spec Table Module
-
-A lower-level Shiny module driven by `row_spec` and `col_spec` lists.
-Supports dropdowns, numeric inputs, checkboxes, toggles, date pickers,
-and text fields with gating, selection, and reset.
-
-- [`editable_table_ui()`](https://matthewcurrier.github.io/reactablePlus/reference/editable_table_ui.md)
-  : UI function for the editable table Shiny module
-- [`editable_table_server()`](https://matthewcurrier.github.io/reactablePlus/reference/editable_table_server.md)
-  : Server function for the editable table Shiny module
-- [`validate_col_spec()`](https://matthewcurrier.github.io/reactablePlus/reference/validate_col_spec.md)
-  : Validate a col_spec list
-- [`validate_row_spec()`](https://matthewcurrier.github.io/reactablePlus/reference/validate_row_spec.md)
-  : Validate a row_spec list
-- [`validate_row_inputs()`](https://matthewcurrier.github.io/reactablePlus/reference/validate_row_inputs.md)
-  : Validate user-supplied input values against col_spec rules
-- [`collect_inputs()`](https://matthewcurrier.github.io/reactablePlus/reference/collect_inputs.md)
-  : Collect inline Shiny input values into a tidy tibble
-- [`merge_existing_data()`](https://matthewcurrier.github.io/reactablePlus/reference/merge_existing_data.md)
-  : Merge previously saved values onto the display data frame
-- [`make_input_id()`](https://matthewcurrier.github.io/reactablePlus/reference/make_input_id.md)
-  : Generate a stable, unique input element ID
+- [`normalize_choices()`](https://matthewcurrier.github.io/reactablePlus/reference/normalize_choices.md)
+  : Normalize dropdown choices to list-of-lists format
 
 ## Grade Utilities
 
-Helper functions for working with grade-level keys (PK through 12). Used
-by the config-driven module’s fill-down logic.
+Helper functions for working with grade-level keys (PK through 12).
+Convenience utilities for education-domain applications; not required by
+the core table infrastructure.
 
 - [`gradeChoices()`](https://matthewcurrier.github.io/reactablePlus/reference/gradeChoices.md)
   [`gradeLabelMap()`](https://matthewcurrier.github.io/reactablePlus/reference/gradeChoices.md)
