@@ -73,6 +73,7 @@ cfg <- table_config(
   ),
 
   selectable = TRUE,
+  click_to_select = TRUE,
   show_reset = TRUE,
 
   badge_col   = "student",
@@ -98,9 +99,9 @@ ui <- fluidPage(
   titlePanel("Dynamic Student Roster"),
   p(class = "text-muted",
     "Dynamic rows from reactive source_data. Filter by department —",
-    "edits survive across filter changes. Select a row to unlock",
-    "the Score column (gating). Email and Dept are read-only",
-    "display columns."
+    "edits survive across filter changes. Click a student name, email,",
+    "or dept to toggle selection. Select a row to unlock the Score",
+    "column (gating)."
   ),
   br(),
   fluidRow(

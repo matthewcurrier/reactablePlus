@@ -254,6 +254,42 @@ result <- config_table_server("demo", cfg)
 Reset clears all inputs to their `empty_value` and deselects all rows
 in a single reactive flush.
 
+To let users click on non-interactive columns (badge, display columns)
+to toggle selection, add `click_to_select = TRUE`:
+
+```{r click-to-select}
+cfg <- table_config(
+  row_id_col    = "student_id",
+  row_label_col = "name",
+
+  display_cols = list(
+    display_col("email", "Email")
+  ),
+
+  columns = list(
+    widget_col("notes", "text", "Notes")
+  ),
+
+  selectable      = TRUE,
+  click_to_select = TRUE,
+  badge_col       = "student",
+  badge_label     = "Student",
+
+  to_output_fn = function(row_state, row_key) {
+    data.frame(
+      id       = row_key,
+      selected = isTRUE(row_state$.selected),
+      notes    = row_state$notes %||% "",
+      stringsAsFactors = FALSE
+    )
+  }
+)
+```
+
+Clicking a student name or email toggles the checkbox.
+Widget columns (dropdowns, text inputs, etc.) are not affected —
+they keep their normal interaction.
+
 
 ## Dynamic rows
 

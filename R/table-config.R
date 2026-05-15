@@ -61,6 +61,11 @@
 #' @param selectable Logical. If `TRUE`, a checkbox column is prepended
 #'   and row selection is tracked. Required when any column has a
 #'   `gate` condition with `type = "selected"`. Default `FALSE`.
+#' @param click_to_select Logical. If `TRUE`, clicking on the badge
+#'   column or any display column toggles the row's selection
+#'   checkbox. Requires `selectable = TRUE`. Widget columns are
+#'   excluded — they have their own click interactions. Default
+#'   `FALSE`.
 #' @param show_reset Logical. If `TRUE`, a Reset button is shown in
 #'   the toolbar that clears all inputs and deselects all rows.
 #'   Default `FALSE`.
@@ -178,6 +183,7 @@ table_config <- function(
   row_label_fn = NULL,
   display_cols = NULL,
   selectable = FALSE,
+  click_to_select = FALSE,
   show_reset = FALSE,
   gear_toggles = NULL,
   interactions = list(),
@@ -280,6 +286,14 @@ table_config <- function(
     }
   }
 
+  # ── click_to_select validation ───────────────────────────────────────────
+  if (isTRUE(click_to_select) && !isTRUE(selectable)) {
+    stop(
+      "click_to_select requires selectable = TRUE.",
+      call. = FALSE
+    )
+  }
+
   label_map <- stats::setNames(as.list(row_labels), row_keys)
 
   # ── Gate wiring ──────────────────────────────────────────────────────────
@@ -340,6 +354,7 @@ table_config <- function(
       display_cols = display_cols,
       columns = columns,
       selectable = selectable,
+      click_to_select = click_to_select,
       show_reset = show_reset,
       gear_toggles = gear_toggles,
       interactions = interactions,

@@ -13,6 +13,44 @@
 # current_rows, settings, and return HTML or colDef objects.
 # =============================================================================
 
+# ── Click-to-select helper ───────────────────────────────────────────────────
+# Inline JS that finds the selection checkbox in the same row and
+# toggles it. Used by badge and display column cells when
+# config$click_to_select is TRUE.
+
+.click_to_select_js <- paste0(
+  "(function(e){",
+  "var row=e.target.closest('.rt-tr');",
+  "if(row){var cb=row.querySelector('input[type=checkbox]');",
+  "if(cb){cb.checked=!cb.checked;",
+  "cb.dispatchEvent(new Event('change'));}}",
+  "e.stopPropagation();",
+  "})(event)"
+)
+
+#' Wrap an HTML string in a click-to-select container.
+#'
+#' Returns the content inside a `<div>` with pointer cursor and an
+#' onclick handler that toggles the row's selection checkbox. The
+#' negative margin + matching padding technique extends the clickable
+#' area to fill the entire cell, not just the text content.
+#'
+#' @param html_content Character. The HTML to wrap.
+#' @return Character. The wrapped HTML string.
+#' @noRd
+.wrap_click_to_select <- function(html_content) {
+  sprintf(
+    paste0(
+      '<div style="cursor:pointer;user-select:none;',
+      'margin:-8px -12px;padding:8px 12px;" ',
+      'onclick="%s">%s</div>'
+    ),
+    .click_to_select_js,
+    html_content
+  )
+}
+
+
 #' Default validation by widget type.
 #' @noRd
 .default_validate <- function(val, type) {
@@ -327,6 +365,8 @@
   }
 
   # Badge column
+  use_click_select <- isTRUE(config$click_to_select)
+
   if (!is.null(config$badge_col)) {
     badge_fn <- config$badge_render_fn %||%
       function(row_key, row_label) {
@@ -337,7 +377,8 @@
       width = 76,
       cell = function(value, index) {
         gk <- tbl$.row_key[index]
-        badge_fn(gk, value)
+        content <- badge_fn(gk, value)
+        if (use_click_select) .wrap_click_to_select(content) else content
       },
       html = TRUE
     )
@@ -352,14 +393,26 @@
         name = dc$label,
         sortable = FALSE
       )
-      if (!is.null(dc$width)) col_args$width <- dc$width
-      if (!is.null(dc$min_width)) col_args$minWidth <- dc$min_width
+      if (!is.null(dc$width)) {
+        col_args$width <- dc$width
+      }
+      if (!is.null(dc$min_width)) {
+        col_args$minWidth <- dc$min_width
+      }
 
-      if (!is.null(dc$render_fn)) {
+      has_render <- !is.null(dc$render_fn)
+      needs_click <- use_click_select
+
+      if (has_render || needs_click) {
         col_args$html <- TRUE
         col_args$cell <- function(value, index) {
           gk <- tbl$.row_key[index]
-          dc$render_fn(value, gk)
+          content <- if (has_render) {
+            dc$render_fn(value, gk)
+          } else {
+            htmltools::htmlEscape(as.character(value %||% ""))
+          }
+          if (needs_click) .wrap_click_to_select(content) else content
         }
       }
 

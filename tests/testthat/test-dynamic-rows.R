@@ -746,3 +746,56 @@ test_that(".build_table_df skips display columns when no source_snapshot", {
 
   expect_false("email" %in% names(tbl))
 })
+
+
+# ── click_to_select validation ───────────────────────────────────────────────
+
+test_that("click_to_select = TRUE requires selectable = TRUE", {
+  expect_error(
+    table_config(
+      row_keys = c("r1"),
+      row_labels = c("R1"),
+      columns = list(widget_col("x", "text", "X")),
+      click_to_select = TRUE
+    ),
+    "click_to_select requires selectable"
+  )
+})
+
+
+test_that("click_to_select = TRUE accepted with selectable = TRUE", {
+  cfg <- table_config(
+    row_keys = c("r1"),
+    row_labels = c("R1"),
+    columns = list(widget_col("x", "text", "X")),
+    selectable = TRUE,
+    click_to_select = TRUE
+  )
+  expect_true(cfg$click_to_select)
+})
+
+
+test_that("click_to_select defaults to FALSE", {
+  cfg <- table_config(
+    row_keys = c("r1"),
+    row_labels = c("R1"),
+    columns = list(widget_col("x", "text", "X")),
+    selectable = TRUE
+  )
+  expect_false(cfg$click_to_select)
+})
+
+
+test_that("click_to_select works in dynamic mode", {
+  cfg <- table_config(
+    row_id_col = "id",
+    row_label_col = "name",
+    display_cols = list(display_col("email", "Email")),
+    columns = list(widget_col("x", "text", "X")),
+    selectable = TRUE,
+    click_to_select = TRUE
+  )
+  expect_true(cfg$click_to_select)
+  expect_true(cfg$selectable)
+  expect_true(cfg$dynamic)
+})

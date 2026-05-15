@@ -13,6 +13,7 @@ table_config(
   row_label_fn = NULL,
   display_cols = NULL,
   selectable = FALSE,
+  click_to_select = FALSE,
   show_reset = FALSE,
   gear_toggles = NULL,
   interactions = list(),
@@ -65,6 +66,12 @@ Default \code{NULL} (no display columns).}
 \item{selectable}{Logical. If \code{TRUE}, a checkbox column is prepended
 and row selection is tracked. Required when any column has a
 \code{gate} condition with \code{type = "selected"}. Default \code{FALSE}.}
+
+\item{click_to_select}{Logical. If \code{TRUE}, clicking on the badge
+column or any display column toggles the row's selection
+checkbox. Requires \code{selectable = TRUE}. Widget columns are
+excluded — they have their own click interactions. Default
+\code{FALSE}.}
 
 \item{show_reset}{Logical. If \code{TRUE}, a Reset button is shown in
 the toolbar that clears all inputs and deselects all rows.
