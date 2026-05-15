@@ -64,6 +64,7 @@ gating) work.</p>
 <span>  row_label_fn <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  display_cols <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  selectable <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  click_to_select <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  show_reset <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  gear_toggles <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  interactions <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
@@ -135,6 +136,14 @@ Default <code>NULL</code> (no display columns).</p></dd>
 <dd><p>Logical. If <code>TRUE</code>, a checkbox column is prepended
 and row selection is tracked. Required when any column has a
 <code>gate</code> condition with <code>type = "selected"</code>. Default <code>FALSE</code>.</p></dd>
+
+
+<dt id="arg-click-to-select">click_to_select<a class="anchor" aria-label="anchor" href="#arg-click-to-select"></a></dt>
+<dd><p>Logical. If <code>TRUE</code>, clicking on the badge
+column or any display column toggles the row's selection
+checkbox. Requires <code>selectable = TRUE</code>. Widget columns are
+excluded — they have their own click interactions. Default
+<code>FALSE</code>.</p></dd>
 
 
 <dt id="arg-show-reset">show_reset<a class="anchor" aria-label="anchor" href="#arg-show-reset"></a></dt>

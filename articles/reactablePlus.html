@@ -295,6 +295,39 @@ button with <code>show_reset = TRUE</code>:</p>
 <span><span class="co"># result$selected_ids() -- reactive character vector of selected row keys</span></span></code></pre></div>
 <p>Reset clears all inputs to their <code>empty_value</code> and
 deselects all rows in a single reactive flush.</p>
+<p>To let users click on non-interactive columns (badge, display
+columns) to toggle selection, add
+<code>click_to_select = TRUE</code>:</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">cfg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/table_config.html">table_config</a></span><span class="op">(</span></span>
+<span>  row_id_col    <span class="op">=</span> <span class="st">"student_id"</span>,</span>
+<span>  row_label_col <span class="op">=</span> <span class="st">"name"</span>,</span>
+<span></span>
+<span>  display_cols <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    <span class="fu"><a href="../reference/display_col.html">display_col</a></span><span class="op">(</span><span class="st">"email"</span>, <span class="st">"Email"</span><span class="op">)</span></span>
+<span>  <span class="op">)</span>,</span>
+<span></span>
+<span>  columns <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    <span class="fu"><a href="../reference/widget_col.html">widget_col</a></span><span class="op">(</span><span class="st">"notes"</span>, <span class="st">"text"</span>, <span class="st">"Notes"</span><span class="op">)</span></span>
+<span>  <span class="op">)</span>,</span>
+<span></span>
+<span>  selectable      <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  click_to_select <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  badge_col       <span class="op">=</span> <span class="st">"student"</span>,</span>
+<span>  badge_label     <span class="op">=</span> <span class="st">"Student"</span>,</span>
+<span></span>
+<span>  to_output_fn <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">row_state</span>, <span class="va">row_key</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>      id       <span class="op">=</span> <span class="va">row_key</span>,</span>
+<span>      selected <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="va">row_state</span><span class="op">$</span><span class="va">.selected</span><span class="op">)</span>,</span>
+<span>      notes    <span class="op">=</span> <span class="va">row_state</span><span class="op">$</span><span class="va">notes</span> <span class="op"><a href="https://rdrr.io/r/base/Control.html" class="external-link">%||%</a></span> <span class="st">""</span>,</span>
+<span>      stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>    <span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Clicking a student name or email toggles the checkbox. Widget columns
+(dropdowns, text inputs, etc.) are not affected — they keep their normal
+interaction.</p>
 </div>
 <div class="section level2">
 <h2 id="dynamic-rows">Dynamic rows<a class="anchor" aria-label="anchor" href="#dynamic-rows"></a>
@@ -305,7 +338,7 @@ change reactively — a filtered roster, search results, records from a
 database query. Dynamic mode handles this.</p>
 <p>Enable it by setting <code>row_id_col</code> instead of
 <code>row_keys</code> / <code>row_labels</code>:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">students</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
 <span>  student_id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"s"</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">6</span><span class="op">)</span>,</span>
 <span>  name <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Amara"</span>, <span class="st">"Ben"</span>, <span class="st">"Clara"</span>, <span class="st">"David"</span>, <span class="st">"Elena"</span>, <span class="st">"Femi"</span><span class="op">)</span>,</span>
@@ -343,7 +376,7 @@ database query. Dynamic mode handles this.</p>
 <code>source_data</code>. Each time it changes, the module derives the
 new row set, preserves user-entered values for surviving rows, and
 assigns defaults for new ones:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">filtered</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/reactive.html" class="external-link">reactive</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    <span class="va">students</span><span class="op">[</span><span class="va">students</span><span class="op">$</span><span class="va">dept</span> <span class="op">==</span> <span class="va">input</span><span class="op">$</span><span class="va">dept_filter</span>, <span class="op">]</span></span>
@@ -357,7 +390,7 @@ assigns defaults for new ones:</p>
 edits are restored — the module retains departed rows’ state
 internally.</p>
 <p>For computed labels, pass a function instead of a column name:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">cfg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/table_config.html">table_config</a></span><span class="op">(</span></span>
 <span>  row_id_col   <span class="op">=</span> <span class="st">"id"</span>,</span>
 <span>  row_label_fn <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">row</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="va">row</span><span class="op">$</span><span class="va">first</span>, <span class="va">row</span><span class="op">$</span><span class="va">last</span><span class="op">)</span>,</span>
@@ -370,7 +403,7 @@ internally.</p>
 <p>When the same table needs to switch between different data contexts
 (e.g. opening Report B after Report A), use <code>reset_signal</code> to
 replace both column values and selection state atomically:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">reset</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/reactiveVal.html" class="external-link">reactiveVal</a></span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span></span>
 <span></span>
@@ -398,7 +431,7 @@ a state replacement. This works in both static and dynamic mode.</p>
 <code>source_data</code> alongside the editable columns — an email
 address, a department, an enrollment date. Use
 <code><a href="../reference/display_col.html">display_col()</a></code>:</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">cfg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/table_config.html">table_config</a></span><span class="op">(</span></span>
 <span>  row_id_col    <span class="op">=</span> <span class="st">"student_id"</span>,</span>
 <span>  row_label_col <span class="op">=</span> <span class="st">"name"</span>,</span>
@@ -425,7 +458,7 @@ address, a department, an enrollment date. Use
 <p>Display columns appear between the badge column and the editable
 widget columns. They accept <code>width</code>, <code>min_width</code>,
 and an optional <code>render_fn</code> for custom HTML rendering:</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/display_col.html">display_col</a></span><span class="op">(</span><span class="st">"status"</span>, <span class="st">"Status"</span>, render_fn <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">value</span>, <span class="va">row_key</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">cls</span> <span class="op">&lt;-</span> <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="va">value</span>, <span class="st">"active"</span><span class="op">)</span><span class="op">)</span> <span class="st">"text-success"</span> <span class="kw">else</span> <span class="st">"text-muted"</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">'&lt;span class="%s"&gt;%s&lt;/span&gt;'</span>, <span class="va">cls</span>, <span class="va">value</span><span class="op">)</span></span>
@@ -436,7 +469,7 @@ and an optional <code>render_fn</code> for custom HTML rendering:</p>
 </h2>
 <p>For complex inputs – typeahead search, multi-field popovers, rating
 scales – use the picker widget types:</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">cfg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/table_config.html">table_config</a></span><span class="op">(</span></span>
 <span>  row_keys   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"PK"</span>, <span class="st">"K"</span>, <span class="st">"01"</span><span class="op">)</span>,</span>
 <span>  row_labels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"PreK"</span>, <span class="st">"K"</span>, <span class="st">"1st"</span><span class="op">)</span>,</span>
@@ -466,7 +499,7 @@ scales – use the picker widget types:</p>
 <p>Every picker widget works as a standalone Shiny input outside of
 tables. Call <code><a href="../reference/useReactablePlus.html">useReactablePlus()</a></code> in your UI to load the JS
 and CSS.</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://shiny.posit.co/" class="external-link">shiny</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/matthewcurrier/reactablePlus" class="external-link">reactablePlus</a></span><span class="op">)</span></span>
 <span></span>
@@ -500,7 +533,7 @@ page level.</li>
 <li>Wrap the reactable widget with <code><a href="../reference/bindPickersOnRender.html">bindPickersOnRender()</a></code> to
 initialize input bindings after the table DOM is created.</li>
 </ol>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://shiny.posit.co/" class="external-link">shiny</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/matthewcurrier/reactablePlus" class="external-link">reactablePlus</a></span><span class="op">)</span></span>
 <span></span>
