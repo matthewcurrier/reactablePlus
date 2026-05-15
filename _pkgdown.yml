@@ -46,7 +46,10 @@ reference:
     desc: >
       A Shiny module that renders an editable table from a declarative
       `table_config` object. Handles widget dispatch, mutual exclusion,
-      fill-down, gear toggles, and data marshaling.
+      fill-down, gear toggles, and data marshaling. Supports static,
+      dynamic, and appendable (user-managed) row modes. See bundled
+      demos via `runExample()`: inventory, roster, evaluations,
+      appendable.
     contents:
       - config_table_ui
       - config_table_server

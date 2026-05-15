@@ -15,22 +15,37 @@
 #' Config-driven Editable Table UI
 #'
 #' UI function for the config-driven editable table module. Works with
-#' `table_config()` objects and picker widgets.
+#' `table_config()` objects and picker widgets. When the config has
+#' `appendable = TRUE`, the toolbar includes an "Add Row" button and
+#' each row renders a delete button (if `allow_delete = TRUE`).
 #' @param id Module namespace ID.
 #' @param config A `table_config` object.
 #' @return A tagList with dependencies, toolbar, and reactable output.
+#' @importFrom shiny NS actionButton icon tags uiOutput
 #' @export
 config_table_ui <- function(id, config) {
   ns <- shiny::NS(id)
 
   has_toolbar <- !is.null(config$toolbar_stats_fn) ||
     !is.null(config$gear_toggles) ||
-    isTRUE(config$show_reset)
+    isTRUE(config$show_reset) ||
+    isTRUE(config$appendable)
 
   toolbar <- if (has_toolbar) {
+    has_left_items <- isTRUE(config$appendable) ||
+      !is.null(config$toolbar_stats_fn)
+
     shiny::tags$div(
       class = "panel-toolbar",
       style = "display: flex; align-items: center; gap: 8px;",
+      if (isTRUE(config$appendable)) {
+        shiny::actionButton(
+          ns("add_row"),
+          "Add Row",
+          class = "btn btn-primary btn-sm",
+          icon = shiny::icon("plus")
+        )
+      },
       if (!is.null(config$toolbar_stats_fn)) {
         shiny::tags$span(
           class = "toolbar-stat",
@@ -42,12 +57,14 @@ config_table_ui <- function(id, config) {
           ns("reset"),
           "Reset",
           class = "btn btn-warning btn-sm",
-          style = "margin-left: auto;"
+          style = if (has_left_items) "margin-left: auto;" else NULL
         )
       },
       if (!is.null(config$gear_toggles)) {
         shiny::tags$div(
-          style = if (isTRUE(config$show_reset)) NULL else "margin-left: auto;",
+          style = if (!isTRUE(config$show_reset) && has_left_items) {
+            "margin-left: auto;"
+          },
           gearPopoverInput(
             inputId = ns("gear"),
             toggles = config$gear_toggles
@@ -110,6 +127,13 @@ config_table_ui <- function(id, config) {
 #' picker widget rendering, state management, and cross-column
 #' interactions.
 #'
+#' In appendable mode (`appendable = TRUE` in config), the module
+#' manages an auto-incrementing row key counter and responds to
+#' "Add Row" and per-row "Delete" button clicks. The table starts
+#' with `min_rows` blank rows. Adding is blocked at `max_rows` and
+#' deletion is blocked at `min_rows`. Reset clears back to `min_rows`
+#' blank rows with fresh keys.
+#'
 #' @param id Module namespace ID.
 #' @param config A `table_config` object.
 #' @param source_data Reactive returning a data frame, or `NULL`.
@@ -169,6 +193,7 @@ config_table_server <- function(
   stopifnot(shiny::is.reactive(data_r))
 
   is_dynamic <- isTRUE(config$dynamic)
+  is_appendable <- isTRUE(config$appendable)
 
   if (is_dynamic && is.null(source_data)) {
     stop(
@@ -190,25 +215,51 @@ config_table_server <- function(
     # ── Effective keys / labels ────────────────────────────────────────────
     # In static mode these are seeded once from config and never change.
     # In dynamic mode they update whenever source_data changes.
+    # In appendable mode they grow/shrink as the user adds/removes rows.
     effective_keys <- shiny::reactiveVal(config$row_keys)
     effective_labels <- shiny::reactiveVal(config$row_labels)
     effective_label_map <- shiny::reactiveVal(config$label_map)
 
     # Track which row_keys have had observers wired. In static mode this
     # is populated once at init. In dynamic mode it grows incrementally
-    # as new rows appear in source_data.
+    # as new rows appear in source_data. In appendable mode it grows
+    # whenever the user adds a row.
     wired_keys_env <- new.env(parent = emptyenv())
     wired_keys_env$keys <- character(0)
 
     # ── State ──────────────────────────────────────────────────────────────
-    rows <- shiny::reactiveVal(
-      if (is_dynamic) list() else .build_empty_rows(config)
-    )
+
+    # Auto-incrementing row key counter for appendable mode.
+    next_id <- shiny::reactiveVal(1L)
+
+    # Appendable mode: seed min_rows blank rows on startup
+    if (is_appendable) {
+      seed_n <- config$min_rows
+      if (seed_n > 0L) {
+        seed_keys <- paste0("row_", seq_len(seed_n))
+        seed_labels <- rep("", seed_n)
+        seed_rows <- stats::setNames(
+          lapply(seed_keys, function(gk) .build_empty_row_state(config, gk)),
+          seed_keys
+        )
+        rows <- shiny::reactiveVal(seed_rows)
+        effective_keys(seed_keys)
+        effective_labels(seed_labels)
+        next_id(seed_n + 1L)
+      } else {
+        rows <- shiny::reactiveVal(list())
+      }
+    } else {
+      rows <- shiny::reactiveVal(
+        if (is_dynamic) list() else .build_empty_rows(config)
+      )
+    }
+
     render_key <- shiny::reactiveVal(0L)
 
     # Seed from saved data (static mode only at init — dynamic mode
     # defers to the source_data observer which fires first).
-    if (!is_dynamic) {
+    if (!is_dynamic && !is_appendable) {
       saved <- shiny::isolate(data_r())
       if (!is.null(saved) && is.data.frame(saved) && nrow(saved) > 0L) {
         rows(.rows_from_saved(config, saved))
@@ -516,9 +567,15 @@ config_table_server <- function(
     # ── Column observers ─────────────────────────────────────────────────
     # One observer per column × row. In static mode, wired once at init.
     # In dynamic mode, wired incrementally by the source_data observer.
+    # In appendable mode, seeded rows are wired at init; added rows are
+    # wired when the add_row observer fires.
 
     if (!is_dynamic) {
-      .wire_new_keys(config$row_keys)
+      if (is_appendable) {
+        .wire_new_keys(shiny::isolate(effective_keys()))
+      } else {
+        .wire_new_keys(config$row_keys)
+      }
     }
 
     # ── Year input observer ──────────────────────────────────────────────
@@ -671,17 +728,116 @@ config_table_server <- function(
     # Now wired by .wire_new_keys() — called at init (static) or
     # incrementally by the source_data observer (dynamic).
 
+    # ── Appendable: Add Row ──────────────────────────────────────────────
+    if (is_appendable) {
+      shiny::observeEvent(input$add_row, {
+        current_keys <- effective_keys()
+        if (
+          !is.null(config$max_rows) &&
+            length(current_keys) >= config$max_rows
+        ) {
+          return(invisible(NULL))
+        }
+
+        new_id <- next_id()
+        new_key <- paste0("row_", new_id)
+        next_id(new_id + 1L)
+
+        new_row <- .build_empty_row_state(config, new_key)
+        rs <- rows()
+        rs[[new_key]] <- new_row
+        rows(rs)
+
+        new_keys <- c(current_keys, new_key)
+        new_labels <- c(effective_labels(), "")
+        effective_keys(new_keys)
+        effective_labels(new_labels)
+        effective_label_map(stats::setNames(
+          as.list(new_labels),
+          new_keys
+        ))
+
+        .wire_new_keys(new_key)
+        render_key(render_key() + 1L)
+      })
+    }
+
+    # ── Appendable: Delete Row ───────────────────────────────────────────
+    if (is_appendable && isTRUE(config$allow_delete)) {
+      shiny::observeEvent(input$.delete_row, {
+        msg <- input$.delete_row
+        if (is.null(msg) || is.null(msg$key)) {
+          return(invisible(NULL))
+        }
+
+        target_key <- msg$key
+        current_keys <- effective_keys()
+
+        if (length(current_keys) <= config$min_rows) {
+          return(invisible(NULL))
+        }
+        if (!(target_key %in% current_keys)) {
+          return(invisible(NULL))
+        }
+
+        rs <- rows()
+        rs[[target_key]] <- NULL
+        rows(rs)
+
+        idx <- match(target_key, current_keys)
+        new_keys <- current_keys[-idx]
+        new_labels <- effective_labels()[-idx]
+        effective_keys(new_keys)
+        effective_labels(new_labels)
+        effective_label_map(stats::setNames(
+          as.list(new_labels),
+          new_keys
+        ))
+
+        render_key(render_key() + 1L)
+      })
+    }
+
     # ── Reset handler ────────────────────────────────────────────────────
     if (isTRUE(config$show_reset)) {
       shiny::observeEvent(input$reset, {
-        current_keys <- effective_keys()
-        empty <- stats::setNames(
-          lapply(current_keys, function(gk) {
-            .build_empty_row_state(config, gk)
-          }),
-          current_keys
-        )
-        rows(empty)
+        if (is_appendable) {
+          seed_n <- config$min_rows
+          new_id <- next_id()
+          if (seed_n > 0L) {
+            seed_keys <- paste0("row_", seq(new_id, length.out = seed_n))
+            seed_labels <- rep("", seed_n)
+            seed_rows <- stats::setNames(
+              lapply(seed_keys, function(gk) {
+                .build_empty_row_state(config, gk)
+              }),
+              seed_keys
+            )
+            next_id(new_id + seed_n)
+          } else {
+            seed_keys <- character(0)
+            seed_labels <- character(0)
+            seed_rows <- list()
+          }
+
+          rows(seed_rows)
+          effective_keys(seed_keys)
+          effective_labels(seed_labels)
+          effective_label_map(stats::setNames(
+            as.list(seed_labels),
+            seed_keys
+          ))
+          .wire_new_keys(seed_keys)
+        } else {
+          current_keys <- effective_keys()
+          empty <- stats::setNames(
+            lapply(current_keys, function(gk) {
+              .build_empty_row_state(config, gk)
+            }),
+            current_keys
+          )
+          rows(empty)
+        }
         render_key(render_key() + 1L)
       })
     }
@@ -1062,6 +1218,15 @@ config_table_server <- function(
         }
 
         rows(rs)
+
+        # ── Re-render when this column controls other columns ─────────
+        # Columns with triggers_rerender = TRUE (auto-set by
+        # table_config for gate controllers and choices_depends_on
+        # targets) need a full table re-render so that dependent
+        # columns re-evaluate their gate state or choices_fn.
+        if (isTRUE(local_cs$triggers_rerender)) {
+          render_key(render_key() + 1L)
+        }
 
         # ── Send targeted in-place updates ───────────────────────────
         # The popover widgets handle their OWN cell's display via the

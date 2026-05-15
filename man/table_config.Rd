@@ -26,7 +26,11 @@ table_config(
   badge_render_fn = NULL,
   row_class_fn = NULL,
   year_col = NULL,
-  year_range = c(1990L, 2050L)
+  year_range = c(1990L, 2050L),
+  appendable = FALSE,
+  allow_delete = TRUE,
+  min_rows = 0L,
+  max_rows = NULL
 )
 }
 \arguments{
@@ -116,6 +120,31 @@ Default \code{NULL} (no row classes).}
 spinner column is shown. Default \code{NULL} (no year column).}
 
 \item{year_range}{Integer vector of length 2, e.g. \code{c(1990, 2050)}.}
+
+\item{appendable}{\code{logical(1)}. When \code{TRUE}, users can add and
+remove rows at runtime through "Add Row" and per-row "Delete"
+buttons rendered by the module. Mutually exclusive with dynamic
+mode (\code{row_id_col} must be \code{NULL}). In appendable mode,
+\code{row_keys} and \code{row_labels} default to \code{character(0)} — the
+table starts empty (or with \code{min_rows} blank rows) and grows as
+the user adds entries. Default \code{FALSE}.}
+
+\item{allow_delete}{\code{logical(1)}. When \code{TRUE} (and \code{appendable}
+is \code{TRUE}), each row shows a "Delete" button. Deletion is
+prevented when the table is at \code{min_rows}. Ignored when
+\code{appendable} is \code{FALSE}. Default \code{TRUE}.}
+
+\item{min_rows}{\code{integer(1)}. The minimum number of rows the table
+maintains in appendable mode. The module seeds this many blank
+rows on startup and prevents deletion below this count. Must be
+non-negative. Ignored when \code{appendable} is \code{FALSE}. Default
+\code{0L}.}
+
+\item{max_rows}{\code{integer(1)} or \code{NULL}. The maximum number of rows
+allowed in appendable mode. When non-\code{NULL}, the "Add Row"
+button is disabled once the table reaches this count. Must be
+\verb{>= min_rows} when both are set. Ignored when \code{appendable} is
+\code{FALSE}. Default \code{NULL} (unlimited).}
 }
 \value{
 A \code{table_config} list (S3 class \code{"table_config"}).
@@ -170,6 +199,20 @@ user-entered values for rows that survive are preserved, new rows
 receive \code{empty_value} defaults, and departed rows' state is
 retained internally so it restores if those rows reappear.
 }
+
+\subsection{Appendable mode}{
+
+When \code{appendable} is \code{TRUE}, the table becomes a variable-length
+input collector where the \strong{user} controls the row set — adding
+blank rows, deleting individual rows, and optionally resetting to
+the minimum. This is mutually exclusive with dynamic mode.
+
+Row keys are generated automatically as
+\code{"row_1"}, \code{"row_2"}, … (incrementing, never reused in a
+session). The module renders "Add Row" and per-row "Delete"
+buttons. \code{min_rows} seeds the initial table and prevents deletion
+below that count. \code{max_rows} caps the upper bound.
+}
 }
 \examples{
 \dontrun{
@@ -207,6 +250,29 @@ cfg_dyn <- table_config(
       id     = row_key,
       status = row_state$status \%||\% NA_character_,
       score  = row_state$score \%||\% NA_real_,
+      stringsAsFactors = FALSE
+    )
+  }
+)
+
+# Appendable mode — user adds and removes rows
+cfg_app <- table_config(
+  appendable = TRUE,
+  min_rows   = 1L,
+  max_rows   = 10L,
+  columns = list(
+    widget_col("fruit", "dropdown", "Fruit",
+      options = list(choices = c("Apple", "Banana", "Cherry"))
+    ),
+    widget_col("qty", "numeric", "Quantity",
+      options = list(min = 1, max = 100)
+    )
+  ),
+  show_reset = TRUE,
+  to_output_fn = function(row_state, row_key) {
+    data.frame(
+      fruit = row_state$fruit \%||\% NA_character_,
+      qty   = row_state$qty \%||\% NA_real_,
       stringsAsFactors = FALSE
     )
   }

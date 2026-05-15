@@ -16,5 +16,7 @@ A tagList with dependencies, toolbar, and reactable output.
 }
 \description{
 UI function for the config-driven editable table module. Works with
-\code{table_config()} objects and picker widgets.
+\code{table_config()} objects and picker widgets. When the config has
+\code{appendable = TRUE}, the toolbar includes an "Add Row" button and
+each row renders a delete button (if \code{allow_delete = TRUE}).
 }

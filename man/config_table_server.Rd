@@ -67,3 +67,11 @@ with \code{config_table_ui()}. Uses \code{table_config()} objects to drive
 picker widget rendering, state management, and cross-column
 interactions.
 }
+\details{
+In appendable mode (\code{appendable = TRUE} in config), the module
+manages an auto-incrementing row key counter and responds to
+"Add Row" and per-row "Delete" button clicks. The table starts
+with \code{min_rows} blank rows. Adding is blocked at \code{max_rows} and
+deletion is blocked at \code{min_rows}. Reset clears back to \code{min_rows}
+blank rows with fresh keys.
+}

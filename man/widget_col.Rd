@@ -47,9 +47,16 @@ the prefix for Shiny input IDs (e.g. \code{"school"} -> \code{input$school_PK}).
 \code{list(show_nces_id = TRUE)} for search picker,
 \code{list(sections = ...)} for attendance picker).
 
-\strong{dropdown}: \code{choices} (required — character vector, named
-character vector, or list of \code{list(label, value)}; see
-\code{\link[=normalize_choices]{normalize_choices()}}), \code{placeholder} (default \code{"-- Select --"}).
+\strong{dropdown}: \code{choices} (character vector, named character vector,
+or list of \code{list(label, value)}; see \code{\link[=normalize_choices]{normalize_choices()}}).
+Required unless \code{choices_fn} is provided. \code{placeholder} (default
+\code{"-- Select --"}). \code{choices_fn} (optional function
+\code{(row_state)} -> choices; when provided, called at render time
+to compute choices dynamically — the return value is normalized
+via \code{\link[=normalize_choices]{normalize_choices()}}). \code{choices_depends_on} (optional
+character vector of column IDs whose changes should trigger a
+re-render so the cascading choices update; columns listed here
+are auto-marked \code{triggers_rerender = TRUE} by \code{\link[=table_config]{table_config()}}).
 
 \strong{numeric}: \code{min} (required), \code{max}, \code{step}.
 
@@ -118,5 +125,20 @@ widget_col("score", "numeric", "Score",
 
 # Picker widget
 widget_col("school", "search_picker", "School", min_width = 300)
+
+# Cascading dropdown — choices depend on another column's value
+widget_col("city", "dropdown", "City",
+  options = list(
+    choices = c("-- pick a state first --"),
+    choices_fn = function(row_state) {
+      switch(row_state$state \%||\% "",
+        "CA" = c("LA" = "la", "SF" = "sf"),
+        "NY" = c("NYC" = "nyc", "Buffalo" = "buf"),
+        c("-- pick a state first --")
+      )
+    },
+    choices_depends_on = "state"
+  )
+)
 
 }

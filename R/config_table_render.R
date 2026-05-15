@@ -271,6 +271,11 @@
     .init = tbl
   )
 
+  # Delete column placeholder (appendable mode with allow_delete)
+  if (isTRUE(config$appendable) && isTRUE(config$allow_delete)) {
+    tbl$.delete <- rep("", n)
+  }
+
   tbl
 }
 
@@ -500,6 +505,34 @@
 
   col_defs <- c(col_defs, widget_defs)
 
+  # Delete column (appendable mode with allow_delete)
+  if (isTRUE(config$appendable) && isTRUE(config$allow_delete)) {
+    col_defs$.delete <- reactable::colDef(
+      name = "",
+      width = 50L,
+      sortable = FALSE,
+      align = "center",
+      html = TRUE,
+      cell = function(value, index) {
+        gk <- tbl$.row_key[index]
+        as.character(htmltools::tags$button(
+          class = "btn btn-link btn-sm rp-delete-row-btn",
+          style = paste0(
+            "color: #dc3545; padding: 2px 6px; ",
+            "font-size: 1.1em; line-height: 1;"
+          ),
+          title = "Delete row",
+          onclick = sprintf(
+            "Shiny.setInputValue('%s', {key:'%s', nonce:Math.random()}, {priority:'event'});",
+            ns(".delete_row"),
+            gk
+          ),
+          htmltools::HTML("&times;")
+        ))
+      }
+    )
+  }
+
   col_defs
 }
 
@@ -724,6 +757,16 @@
       input_id <- ns(paste0(cs$id, "_", gk))
       la <- .locked_attrs(locked, "width: 100%; padding: 4px;")
 
+      # Resolve choices: dynamic choices_fn takes precedence over static
+      resolved_choices <- if (!is.null(opts$choices_fn) && is.list(row)) {
+        tryCatch(
+          normalize_choices(opts$choices_fn(row)),
+          error = function(e) opts$choices %||% list()
+        )
+      } else {
+        opts$choices %||% list()
+      }
+
       placeholder_tag <- htmltools::tags$option(
         value = "",
         disabled = "disabled",
@@ -731,7 +774,7 @@
         opts$placeholder %||% "-- Select --"
       )
 
-      choice_tags <- purrr::map(opts$choices, function(choice) {
+      choice_tags <- purrr::map(resolved_choices, function(choice) {
         is_match <- has_value &&
           identical(as.character(current_val), as.character(choice$value))
         htmltools::tags$option(

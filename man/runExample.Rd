@@ -17,6 +17,9 @@ selection + value gating, reset, selected_ids output.}
 \item{\code{"evaluations"}}{Student evaluations — attendance_picker
 with custom sections, notes_input, badge_render_fn,
 row_class_fn, mixing picker and primitive columns.}
+\item{\code{"appendable"}}{Appendable fruit order — user-managed
+rows with add/delete buttons, min_rows/max_rows constraints,
+dropdown + numeric + checkbox + text columns.}
 }}
 
 \item{port}{Integer. Port to run the app on. Default \code{NULL}
@@ -38,6 +41,7 @@ runExample()
 runExample("inventory")
 runExample("roster")
 runExample("evaluations")
+runExample("appendable")
 }
 
 }

@@ -97,6 +97,27 @@
 #' @param year_col Character or NULL. When non-NULL, an editable year
 #'   spinner column is shown. Default `NULL` (no year column).
 #' @param year_range Integer vector of length 2, e.g. `c(1990, 2050)`.
+#' @param appendable `logical(1)`. When `TRUE`, users can add and
+#'   remove rows at runtime through "Add Row" and per-row "Delete"
+#'   buttons rendered by the module. Mutually exclusive with dynamic
+#'   mode (`row_id_col` must be `NULL`). In appendable mode,
+#'   `row_keys` and `row_labels` default to `character(0)` — the
+#'   table starts empty (or with `min_rows` blank rows) and grows as
+#'   the user adds entries. Default `FALSE`.
+#' @param allow_delete `logical(1)`. When `TRUE` (and `appendable`
+#'   is `TRUE`), each row shows a "Delete" button. Deletion is
+#'   prevented when the table is at `min_rows`. Ignored when
+#'   `appendable` is `FALSE`. Default `TRUE`.
+#' @param min_rows `integer(1)`. The minimum number of rows the table
+#'   maintains in appendable mode. The module seeds this many blank
+#'   rows on startup and prevents deletion below this count. Must be
+#'   non-negative. Ignored when `appendable` is `FALSE`. Default
+#'   `0L`.
+#' @param max_rows `integer(1)` or `NULL`. The maximum number of rows
+#'   allowed in appendable mode. When non-`NULL`, the "Add Row"
+#'   button is disabled once the table reaches this count. Must be
+#'   `>= min_rows` when both are set. Ignored when `appendable` is
+#'   `FALSE`. Default `NULL` (unlimited).
 #'
 #' @details
 #' ## Interactions
@@ -127,6 +148,19 @@
 #' user-entered values for rows that survive are preserved, new rows
 #' receive `empty_value` defaults, and departed rows' state is
 #' retained internally so it restores if those rows reappear.
+#'
+#' ## Appendable mode
+#'
+#' When `appendable` is `TRUE`, the table becomes a variable-length
+#' input collector where the **user** controls the row set — adding
+#' blank rows, deleting individual rows, and optionally resetting to
+#' the minimum. This is mutually exclusive with dynamic mode.
+#'
+#' Row keys are generated automatically as
+#' `"row_1"`, `"row_2"`, … (incrementing, never reused in a
+#' session). The module renders "Add Row" and per-row "Delete"
+#' buttons. `min_rows` seeds the initial table and prevents deletion
+#' below that count. `max_rows` caps the upper bound.
 #'
 #' @return A `table_config` list (S3 class `"table_config"`).
 #'
@@ -170,6 +204,29 @@
 #'     )
 #'   }
 #' )
+#'
+#' # Appendable mode — user adds and removes rows
+#' cfg_app <- table_config(
+#'   appendable = TRUE,
+#'   min_rows   = 1L,
+#'   max_rows   = 10L,
+#'   columns = list(
+#'     widget_col("fruit", "dropdown", "Fruit",
+#'       options = list(choices = c("Apple", "Banana", "Cherry"))
+#'     ),
+#'     widget_col("qty", "numeric", "Quantity",
+#'       options = list(min = 1, max = 100)
+#'     )
+#'   ),
+#'   show_reset = TRUE,
+#'   to_output_fn = function(row_state, row_key) {
+#'     data.frame(
+#'       fruit = row_state$fruit %||% NA_character_,
+#'       qty   = row_state$qty %||% NA_real_,
+#'       stringsAsFactors = FALSE
+#'     )
+#'   }
+#' )
 #' }
 #'
 #' @importFrom rlang `%||%`
@@ -196,13 +253,27 @@ table_config <- function(
   badge_render_fn = NULL,
   row_class_fn = NULL,
   year_col = NULL,
-  year_range = c(1990L, 2050L)
+  year_range = c(1990L, 2050L),
+  appendable = FALSE,
+  allow_delete = TRUE,
+  min_rows = 0L,
+  max_rows = NULL
 ) {
   stopifnot(is.list(columns))
 
   dynamic <- !is.null(row_id_col)
 
   # ── Mode validation ──────────────────────────────────────────────────────
+
+  # Appendable and dynamic are mutually exclusive
+  if (isTRUE(appendable) && dynamic) {
+    stop(
+      "appendable mode and dynamic mode (row_id_col) are mutually ",
+      "exclusive. Use one or the other.",
+      call. = FALSE
+    )
+  }
+
   if (dynamic) {
     stopifnot(
       is.character(row_id_col),
@@ -232,15 +303,16 @@ table_config <- function(
     if (!is.null(row_label_fn)) {
       stopifnot(is.function(row_label_fn))
     }
-    # Default row_keys / row_labels to empty in dynamic mode
+    row_keys <- row_keys %||% character(0)
+    row_labels <- row_labels %||% character(0)
+  } else if (isTRUE(appendable)) {
     row_keys <- row_keys %||% character(0)
     row_labels <- row_labels %||% character(0)
   } else {
-    # Static mode — row_keys and row_labels are required
     if (is.null(row_keys) || is.null(row_labels)) {
       stop(
         "row_keys and row_labels are required in static mode ",
-        "(when row_id_col is NULL).",
+        "(when row_id_col is NULL and appendable is FALSE).",
         call. = FALSE
       )
     }
@@ -252,6 +324,39 @@ table_config <- function(
     length(row_keys) == length(row_labels)
   )
 
+  # ── Appendable parameter validation ────────────────────────────────────
+  if (isTRUE(appendable)) {
+    if (
+      !is.logical(allow_delete) ||
+        length(allow_delete) != 1L ||
+        is.na(allow_delete)
+    ) {
+      stop("allow_delete must be TRUE or FALSE.", call. = FALSE)
+    }
+
+    min_rows <- as.integer(min_rows)
+    if (length(min_rows) != 1L || is.na(min_rows) || min_rows < 0L) {
+      stop("min_rows must be a non-negative integer.", call. = FALSE)
+    }
+
+    if (!is.null(max_rows)) {
+      max_rows <- as.integer(max_rows)
+      if (length(max_rows) != 1L || is.na(max_rows) || max_rows < 1L) {
+        stop("max_rows must be a positive integer or NULL.", call. = FALSE)
+      }
+      if (max_rows < min_rows) {
+        stop(
+          "max_rows (",
+          max_rows,
+          ") must be >= min_rows (",
+          min_rows,
+          ").",
+          call. = FALSE
+        )
+      }
+    }
+  }
+
   # ── Display column validation ────────────────────────────────────────────
   if (!is.null(display_cols)) {
     if (!dynamic) {
@@ -261,7 +366,8 @@ table_config <- function(
       )
     }
     if (!is.list(display_cols) || length(display_cols) == 0L) {
-      stop("display_cols must be a non-empty list of display_col() specs.",
+      stop(
+        "display_cols must be a non-empty list of display_col() specs.",
         call. = FALSE
       )
     }
@@ -280,7 +386,8 @@ table_config <- function(
     if (length(overlap) > 0L) {
       stop(
         "display_col IDs must not collide with widget_col IDs. ",
-        "Overlap: ", paste(overlap, collapse = ", "),
+        "Overlap: ",
+        paste(overlap, collapse = ", "),
         call. = FALSE
       )
     }
@@ -296,42 +403,56 @@ table_config <- function(
 
   label_map <- stats::setNames(as.list(row_labels), row_keys)
 
-  # ── Gate wiring ──────────────────────────────────────────────────────────
-  # Collect all col_ids referenced as gate controllers and auto-set
-  # triggers_rerender on them. Also validate references and check that
-  # "selected" gates have selectable = TRUE.
+  # ── Gate & dependency wiring ─────────────────────────────────────────────
+  # Collect all col_ids referenced as gate controllers or cascading-choice
+  # dependencies and auto-set triggers_rerender on them.
 
   all_col_ids <- purrr::map_chr(columns, "id")
 
   controller_ids <- character(0)
   purrr::walk(columns, function(cs) {
-    if (is.null(cs$gate)) {
-      return()
-    }
-    purrr::walk(cs$gate, function(cond) {
-      if (cond$type == "value") {
-        if (!cond$col_id %in% all_col_ids) {
+    if (!is.null(cs$gate)) {
+      purrr::walk(cs$gate, function(cond) {
+        if (cond$type == "value") {
+          if (!cond$col_id %in% all_col_ids) {
+            stop(
+              "widget_col '",
+              cs$id,
+              "' gate references col_id '",
+              cond$col_id,
+              "' which does not exist in columns.",
+              call. = FALSE
+            )
+          }
+          controller_ids <<- unique(c(controller_ids, cond$col_id))
+        }
+        if (cond$type == "selected" && !isTRUE(selectable)) {
           stop(
             "widget_col '",
             cs$id,
-            "' gate references col_id '",
-            cond$col_id,
-            "' which does not exist in columns.",
+            "' gate uses type 'selected' but ",
+            "selectable is not TRUE in table_config().",
             call. = FALSE
           )
         }
-        controller_ids <<- unique(c(controller_ids, cond$col_id))
-      }
-      if (cond$type == "selected" && !isTRUE(selectable)) {
+      })
+    }
+
+    dep_ids <- cs$options$choices_depends_on
+    if (!is.null(dep_ids)) {
+      missing <- setdiff(dep_ids, all_col_ids)
+      if (length(missing) > 0L) {
         stop(
           "widget_col '",
           cs$id,
-          "' gate uses type 'selected' but ",
-          "selectable is not TRUE in table_config().",
+          "' choices_depends_on references column(s) '",
+          paste(missing, collapse = "', '"),
+          "' which do not exist in columns.",
           call. = FALSE
         )
       }
-    })
+      controller_ids <<- unique(c(controller_ids, dep_ids))
+    }
   })
 
   # Auto-mark controller columns as triggers_rerender
@@ -348,6 +469,7 @@ table_config <- function(
       row_labels = row_labels,
       label_map = label_map,
       dynamic = dynamic,
+      appendable = isTRUE(appendable),
       row_id_col = row_id_col,
       row_label_col = row_label_col,
       row_label_fn = row_label_fn,
@@ -356,6 +478,9 @@ table_config <- function(
       selectable = selectable,
       click_to_select = click_to_select,
       show_reset = show_reset,
+      allow_delete = if (isTRUE(appendable)) allow_delete else FALSE,
+      min_rows = if (isTRUE(appendable)) min_rows else 0L,
+      max_rows = if (isTRUE(appendable)) max_rows else NULL,
       gear_toggles = gear_toggles,
       interactions = interactions,
       from_saved_fn = from_saved_fn,
@@ -403,9 +528,16 @@ table_config <- function(
 #'   `list(show_nces_id = TRUE)` for search picker,
 #'   `list(sections = ...)` for attendance picker).
 #'
-#'   **dropdown**: `choices` (required — character vector, named
-#'   character vector, or list of `list(label, value)`; see
-#'   [normalize_choices()]), `placeholder` (default `"-- Select --"`).
+#'   **dropdown**: `choices` (character vector, named character vector,
+#'   or list of `list(label, value)`; see [normalize_choices()]).
+#'   Required unless `choices_fn` is provided. `placeholder` (default
+#'   `"-- Select --"`). `choices_fn` (optional function
+#'   `(row_state)` -> choices; when provided, called at render time
+#'   to compute choices dynamically — the return value is normalized
+#'   via [normalize_choices()]). `choices_depends_on` (optional
+#'   character vector of column IDs whose changes should trigger a
+#'   re-render so the cascading choices update; columns listed here
+#'   are auto-marked `triggers_rerender = TRUE` by [table_config()]).
 #'
 #'   **numeric**: `min` (required), `max`, `step`.
 #'
@@ -465,6 +597,21 @@ table_config <- function(
 #'
 #' # Picker widget
 #' widget_col("school", "search_picker", "School", min_width = 300)
+#'
+#' # Cascading dropdown — choices depend on another column's value
+#' widget_col("city", "dropdown", "City",
+#'   options = list(
+#'     choices = c("-- pick a state first --"),
+#'     choices_fn = function(row_state) {
+#'       switch(row_state$state %||% "",
+#'         "CA" = c("LA" = "la", "SF" = "sf"),
+#'         "NY" = c("NYC" = "nyc", "Buffalo" = "buf"),
+#'         c("-- pick a state first --")
+#'       )
+#'     },
+#'     choices_depends_on = "state"
+#'   )
+#' )
 #'
 #' @importFrom rlang `%||%`
 #' @export
@@ -549,10 +696,36 @@ widget_col <- function(
   # ── Primitive-type validation & normalization ────────────────────────────
 
   if (type == "dropdown") {
-    if (is.null(options$choices)) {
-      stop("options$choices is required for type = 'dropdown'.", call. = FALSE)
+    has_choices <- !is.null(options[["choices"]])
+    has_choices_fn <- !is.null(options[["choices_fn"]])
+
+    if (!has_choices && !has_choices_fn) {
+      stop(
+        "options$choices is required for type = 'dropdown' ",
+        "(or provide options$choices_fn).",
+        call. = FALSE
+      )
     }
-    options$choices <- normalize_choices(options$choices)
+
+    if (has_choices_fn && !is.function(options[["choices_fn"]])) {
+      stop("options$choices_fn must be a function.", call. = FALSE)
+    }
+
+    if (!is.null(options[["choices_depends_on"]])) {
+      if (
+        !is.character(options[["choices_depends_on"]]) ||
+          length(options[["choices_depends_on"]]) == 0L
+      ) {
+        stop(
+          "options$choices_depends_on must be a non-empty character vector.",
+          call. = FALSE
+        )
+      }
+    }
+
+    if (has_choices) {
+      options[["choices"]] <- normalize_choices(options[["choices"]])
+    }
   }
 
   if (type == "numeric") {
@@ -639,8 +812,11 @@ display_col <- function(
   render_fn = NULL
 ) {
   stopifnot(
-    is.character(id), length(id) == 1L, nzchar(id),
-    is.character(label), length(label) == 1L
+    is.character(id),
+    length(id) == 1L,
+    nzchar(id),
+    is.character(label),
+    length(label) == 1L
   )
   if (!is.null(render_fn)) {
     stopifnot(is.function(render_fn))
