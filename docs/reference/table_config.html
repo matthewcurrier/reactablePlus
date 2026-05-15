@@ -56,9 +56,13 @@ gating) work.</p>
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">table_config</span><span class="op">(</span></span>
-<span>  <span class="va">row_keys</span>,</span>
-<span>  <span class="va">row_labels</span>,</span>
+<span>  row_keys <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  row_labels <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  <span class="va">columns</span>,</span>
+<span>  row_id_col <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  row_label_col <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  row_label_fn <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  display_cols <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  selectable <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  show_reset <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  gear_toggles <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -81,16 +85,50 @@ gating) work.</p>
 
 
 <dl><dt id="arg-row-keys">row_keys<a class="anchor" aria-label="anchor" href="#arg-row-keys"></a></dt>
-<dd><p>Character vector of row identifiers (e.g. grade keys).</p></dd>
+<dd><p>Character vector of row identifiers (e.g. grade
+keys). Required in static mode. In dynamic mode, defaults to
+<code>character(0)</code> — rows are derived from <code>source_data</code> at runtime.</p></dd>
 
 
 <dt id="arg-row-labels">row_labels<a class="anchor" aria-label="anchor" href="#arg-row-labels"></a></dt>
 <dd><p>Character vector of display labels (same length as
-<code>row_keys</code>).</p></dd>
+<code>row_keys</code>). Required in static mode. In dynamic mode, defaults
+to <code>character(0)</code> — labels are derived via <code>row_label_col</code> or
+<code>row_label_fn</code>.</p></dd>
 
 
 <dt id="arg-columns">columns<a class="anchor" aria-label="anchor" href="#arg-columns"></a></dt>
 <dd><p>List of column specs built with <code><a href="widget_col.html">widget_col()</a></code>.</p></dd>
+
+
+<dt id="arg-row-id-col">row_id_col<a class="anchor" aria-label="anchor" href="#arg-row-id-col"></a></dt>
+<dd><p><code>character(1)</code> or <code>NULL</code>. The name of the column
+in <code>source_data</code> that uniquely identifies each row. When non-NULL
+the config operates in dynamic mode. Default <code>NULL</code> (static mode).</p></dd>
+
+
+<dt id="arg-row-label-col">row_label_col<a class="anchor" aria-label="anchor" href="#arg-row-label-col"></a></dt>
+<dd><p><code>character(1)</code> or <code>NULL</code>. The name of the
+column in <code>source_data</code> to use as the display label. Ignored when
+<code>row_id_col</code> is <code>NULL</code>. Exactly one of <code>row_label_col</code> or
+<code>row_label_fn</code> must be supplied in dynamic mode.</p></dd>
+
+
+<dt id="arg-row-label-fn">row_label_fn<a class="anchor" aria-label="anchor" href="#arg-row-label-fn"></a></dt>
+<dd><p><code>function</code> or <code>NULL</code>. A function
+<code>(source_data_row)</code> -&gt; <code>character(1)</code> that computes a display
+label from a single row (a one-row data frame) of <code>source_data</code>.
+Ignored when <code>row_id_col</code> is <code>NULL</code>. Exactly one of
+<code>row_label_col</code> or <code>row_label_fn</code> must be supplied in dynamic
+mode.</p></dd>
+
+
+<dt id="arg-display-cols">display_cols<a class="anchor" aria-label="anchor" href="#arg-display-cols"></a></dt>
+<dd><p>List of <code><a href="display_col.html">display_col()</a></code> specs, or <code>NULL</code>.
+Read-only columns whose values are drawn from <code>source_data</code> in
+dynamic mode. Displayed between the badge column and the editable
+widget columns. Requires dynamic mode (<code>row_id_col</code> must be set).
+Default <code>NULL</code> (no display columns).</p></dd>
 
 
 <dt id="arg-selectable">selectable<a class="anchor" aria-label="anchor" href="#arg-selectable"></a></dt>
@@ -175,8 +213,15 @@ spinner column is shown. Default <code>NULL</code> (no year column).</p></dd>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-
-<div class="section">
+    <p>Two modes are supported:</p>
+<p><strong>Static mode</strong> (default): rows are fixed at config time via
+<code>row_keys</code> / <code>row_labels</code>. Use when the set of editable rows is
+known up front (e.g. a grade roster).</p>
+<p><strong>Dynamic mode</strong>: rows are derived at runtime from a reactive
+<code>source_data</code> data frame passed to <code><a href="config_table_server.html">config_table_server()</a></code>. Enable
+by supplying <code>row_id_col</code> and either <code>row_label_col</code> or
+<code>row_label_fn</code>. In this mode <code>row_keys</code> / <code>row_labels</code> are
+optional (default to <code>character(0)</code>).</p><div class="section">
 <h3 id="interactions">Interactions<a class="anchor" aria-label="anchor" href="#interactions"></a></h3>
 
 
@@ -200,11 +245,25 @@ columns referenced in <code>gate</code> conditions are automatically marked
 <code>triggers_rerender = TRUE</code> so the table updates when they change.</p>
 </div>
 
+<div class="section">
+<h3 id="dynamic-mode">Dynamic mode<a class="anchor" aria-label="anchor" href="#dynamic-mode"></a></h3>
+
+
+<p>When <code>row_id_col</code> is non-NULL, the config is in dynamic mode.
+Rows are not fixed at config time — they are derived from the
+<code>source_data</code> reactive at runtime. Each time <code>source_data</code>
+changes, the module merges the new row set with existing state:
+user-entered values for rows that survive are preserved, new rows
+receive <code>empty_value</code> defaults, and departed rows' state is
+retained internally so it restores if those rows reappear.</p>
+</div>
+
     </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
+<span class="r-in"><span><span class="co"># Static mode — rows fixed at config time</span></span></span>
 <span class="r-in"><span><span class="va">cfg</span> <span class="op">&lt;-</span> <span class="fu">table_config</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  row_keys   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"PK"</span>, <span class="st">"K"</span>, <span class="st">"01"</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>  row_labels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"PreK"</span>, <span class="st">"K"</span>, <span class="st">"1st"</span><span class="op">)</span>,</span></span>
@@ -217,6 +276,29 @@ columns referenced in <code>gate</code> conditions are automatically marked
 <span class="r-in"><span>  badge_render_fn <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">row_key</span>, <span class="va">row_label</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>    <span class="va">css_class</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"grade-badge g-"</span>, <span class="va">row_key</span><span class="op">)</span></span></span>
 <span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">'&lt;span class="%s"&gt;%s&lt;/span&gt;'</span>, <span class="va">css_class</span>, <span class="va">row_label</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="op">}</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Dynamic mode — rows derived from source_data at runtime</span></span></span>
+<span class="r-in"><span><span class="va">cfg_dyn</span> <span class="op">&lt;-</span> <span class="fu">table_config</span><span class="op">(</span></span></span>
+<span class="r-in"><span>  row_id_col    <span class="op">=</span> <span class="st">"student_id"</span>,</span></span>
+<span class="r-in"><span>  row_label_col <span class="op">=</span> <span class="st">"student_name"</span>,</span></span>
+<span class="r-in"><span>  columns <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>    <span class="fu"><a href="widget_col.html">widget_col</a></span><span class="op">(</span><span class="st">"status"</span>, <span class="st">"dropdown"</span>, <span class="st">"Status"</span>,</span></span>
+<span class="r-in"><span>      options <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>choices <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Active"</span>, <span class="st">"Inactive"</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span>    <span class="op">)</span>,</span></span>
+<span class="r-in"><span>    <span class="fu"><a href="widget_col.html">widget_col</a></span><span class="op">(</span><span class="st">"score"</span>, <span class="st">"numeric"</span>, <span class="st">"Score"</span>,</span></span>
+<span class="r-in"><span>      options <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>min <span class="op">=</span> <span class="fl">0</span>, max <span class="op">=</span> <span class="fl">100</span><span class="op">)</span></span></span>
+<span class="r-in"><span>    <span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="op">)</span>,</span></span>
+<span class="r-in"><span>  selectable <span class="op">=</span> <span class="cn">TRUE</span>,</span></span>
+<span class="r-in"><span>  to_output_fn <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">row_state</span>, <span class="va">row_key</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>      id     <span class="op">=</span> <span class="va">row_key</span>,</span></span>
+<span class="r-in"><span>      status <span class="op">=</span> <span class="va">row_state</span><span class="op">$</span><span class="va">status</span> <span class="op"><a href="https://rdrr.io/r/base/Control.html" class="external-link">%||%</a></span> <span class="cn">NA_character_</span>,</span></span>
+<span class="r-in"><span>      score  <span class="op">=</span> <span class="va">row_state</span><span class="op">$</span><span class="va">score</span> <span class="op"><a href="https://rdrr.io/r/base/Control.html" class="external-link">%||%</a></span> <span class="cn">NA_real_</span>,</span></span>
+<span class="r-in"><span>      stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span></span></span>
+<span class="r-in"><span>    <span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="op">}</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>

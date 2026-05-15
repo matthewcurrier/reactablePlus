@@ -50,6 +50,7 @@ reference:
     contents:
       - config_table_ui
       - config_table_server
+      - display_col
       - table_config
       - widget_col
       - normalize_choices

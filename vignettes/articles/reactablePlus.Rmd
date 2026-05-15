@@ -92,7 +92,9 @@ anywhere you'd use a regular Shiny input.
 reactable from a `table_config()` object. Supports both primitive
 inputs (dropdown, numeric, date, checkbox, toggle, text) and popover
 picker widgets -- with gating, row selection, reset, mutual exclusion,
-and fill-down.
+and fill-down. Tables can be static (rows fixed at config time) or
+dynamic (rows derived from a reactive `source_data` data frame, with
+state preservation across changes).
 
 
 ## Primitive input types
@@ -253,6 +255,158 @@ Reset clears all inputs to their `empty_value` and deselects all rows
 in a single reactive flush.
 
 
+## Dynamic rows
+
+Static mode (the examples above) is perfect when you know the rows
+at config time. But some use cases need rows that appear, disappear,
+or change reactively — a filtered roster, search results, records
+from a database query. Dynamic mode handles this.
+
+Enable it by setting `row_id_col` instead of `row_keys` /
+`row_labels`:
+
+```{r dynamic-config}
+students <- data.frame(
+  student_id = paste0("s", 1:6),
+  name = c("Amara", "Ben", "Clara", "David", "Elena", "Femi"),
+  email = paste0(
+    c("amara", "ben", "clara", "david", "elena", "femi"),
+    "@school.edu"
+  ),
+  dept = c("Eng", "Eng", "Sci", "Sci", "Arts", "Arts"),
+  stringsAsFactors = FALSE
+)
+
+cfg <- table_config(
+  row_id_col    = "student_id",
+  row_label_col = "name",
+
+  columns = list(
+    widget_col("status", "dropdown", "Status",
+      options = list(choices = c("Active" = "active", "On Leave" = "leave"))
+    ),
+    widget_col("score", "numeric", "Score",
+      options = list(min = 0, max = 100)
+    )
+  ),
+
+  to_output_fn = function(row_state, row_key) {
+    data.frame(
+      student_id = row_key,
+      status     = row_state$status %||% NA_character_,
+      score      = row_state$score %||% NA_real_,
+      stringsAsFactors = FALSE
+    )
+  }
+)
+```
+
+In the server, pass a reactive data frame as `source_data`. Each
+time it changes, the module derives the new row set, preserves
+user-entered values for surviving rows, and assigns defaults for
+new ones:
+
+```{r dynamic-server}
+server <- function(input, output, session) {
+  filtered <- reactive({
+    students[students$dept == input$dept_filter, ]
+  })
+
+  result <- config_table_server("demo", cfg,
+    source_data = filtered
+  )
+}
+```
+
+If a row leaves (because the filter changed) and later returns,
+its edits are restored — the module retains departed rows' state
+internally.
+
+For computed labels, pass a function instead of a column name:
+
+```{r label-fn}
+cfg <- table_config(
+  row_id_col   = "id",
+  row_label_fn = function(row) paste(row$first, row$last),
+  columns = list(widget_col("x", "text", "X"))
+)
+```
+
+
+## Mid-session reset
+
+When the same table needs to switch between different data contexts
+(e.g. opening Report B after Report A), use `reset_signal` to
+replace both column values and selection state atomically:
+
+```{r reset-signal}
+server <- function(input, output, session) {
+  reset <- reactiveVal(NULL)
+
+  observeEvent(input$switch_report, {
+    saved <- load_report(input$report_id)
+    reset(list(
+      data     = saved,              # data.frame parsed via from_saved_fn
+      selected = saved$id[saved$sel] # character vector, or NULL to clear
+    ))
+  })
+
+  result <- config_table_server("tbl", cfg,
+    source_data  = filtered,
+    reset_signal = reset
+  )
+}
+```
+
+The signal is ignored when `NULL` (including the initial
+`reactiveVal(NULL)` at startup). Only non-NULL values trigger
+a state replacement.  This works in both static and dynamic mode.
+
+
+## Display columns
+
+In dynamic mode, you often want to show read-only context from
+`source_data` alongside the editable columns — an email address,
+a department, an enrollment date. Use `display_col()`:
+
+```{r display-cols}
+cfg <- table_config(
+  row_id_col    = "student_id",
+  row_label_col = "name",
+
+  display_cols = list(
+    display_col("email", "Email", min_width = 180),
+    display_col("dept", "Dept", width = 100)
+  ),
+
+  columns = list(
+    widget_col("status", "dropdown", "Status",
+      options = list(choices = c("Active" = "active", "Inactive" = "inactive"))
+    )
+  ),
+
+  to_output_fn = function(row_state, row_key) {
+    data.frame(
+      student_id = row_key,
+      status     = row_state$status %||% NA_character_,
+      stringsAsFactors = FALSE
+    )
+  }
+)
+```
+
+Display columns appear between the badge column and the editable
+widget columns. They accept `width`, `min_width`, and an optional
+`render_fn` for custom HTML rendering:
+
+```{r display-render}
+display_col("status", "Status", render_fn = function(value, row_key) {
+  cls <- if (identical(value, "active")) "text-success" else "text-muted"
+  sprintf('<span class="%s">%s</span>', cls, value)
+})
+```
+
+
 ## Picker widgets in tables
 
 For complex inputs -- typeahead search, multi-field popovers, rating
@@ -370,6 +524,8 @@ while letting domain-specific apps customize appearance:
 - `from_saved_fn(db_row, col_specs)` -- parse saved data into row state
 - `toolbar_stats_fn(rows, row_keys)` -- dynamic toolbar content
 - `year_col` / `year_range` -- opt-in editable year spinner column
+- `row_id_col` / `row_label_col` / `row_label_fn` -- dynamic row mode
+- `display_cols` -- read-only columns from `source_data` (dynamic mode)
 
 
 ## Grade utilities
