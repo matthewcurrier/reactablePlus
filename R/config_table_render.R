@@ -32,8 +32,10 @@
 #'
 #' Returns the content inside a `<div>` with pointer cursor and an
 #' onclick handler that toggles the row's selection checkbox. The
-#' negative margin + matching padding technique extends the clickable
-#' area to fill the entire cell, not just the text content.
+#' wrapper is a block-level element with its own padding, intended to
+#' be placed inside a cell whose native padding has been zeroed out
+#' via [.click_to_select_cell_style]. This avoids any assumptions
+#' about the table's CSS.
 #'
 #' @param html_content Character. The HTML to wrap.
 #' @return Character. The wrapped HTML string.
@@ -42,13 +44,22 @@
   sprintf(
     paste0(
       '<div style="cursor:pointer;user-select:none;',
-      'margin:-8px -12px;padding:8px 12px;" ',
+      'padding:8px 12px;" ',
       'onclick="%s">%s</div>'
     ),
     .click_to_select_js,
     html_content
   )
 }
+
+#' Cell style applied to colDefs that use click-to-select.
+#'
+#' Zeroes out the cell's native padding so `.wrap_click_to_select()`'s
+#' own padding becomes the sole source. This means the clickable area
+#' fills the entire cell regardless of the table's theme or custom CSS.
+#'
+#' @noRd
+.click_to_select_cell_style <- list(padding = "0")
 
 
 #' Default validation by widget type.
@@ -372,7 +383,8 @@
       function(row_key, row_label) {
         sprintf("<span>%s</span>", htmltools::htmlEscape(row_label))
       }
-    col_defs$.row_label <- reactable::colDef(
+
+    badge_args <- list(
       name = config$badge_label %||% "Label",
       width = 76,
       cell = function(value, index) {
@@ -382,6 +394,11 @@
       },
       html = TRUE
     )
+    if (use_click_select) {
+      badge_args$style <- .click_to_select_cell_style
+    }
+
+    col_defs$.row_label <- do.call(reactable::colDef, badge_args)
   } else {
     col_defs$.row_label <- reactable::colDef(show = FALSE)
   }
@@ -414,6 +431,9 @@
           }
           if (needs_click) .wrap_click_to_select(content) else content
         }
+      }
+      if (needs_click) {
+        col_args$style <- .click_to_select_cell_style
       }
 
       col_defs[[dc$id]] <<- do.call(reactable::colDef, col_args)

@@ -225,7 +225,9 @@ config_table_server <- function(
     # (dynamic). Only wires keys not already in wired_keys_env$keys.
     .wire_new_keys <- function(new_keys) {
       unwired <- setdiff(new_keys, wired_keys_env$keys)
-      if (length(unwired) == 0L) return(invisible(NULL))
+      if (length(unwired) == 0L) {
+        return(invisible(NULL))
+      }
 
       # Column observers
       purrr::walk(
@@ -285,6 +287,14 @@ config_table_server <- function(
           }
 
           derived <- .derive_source_keys_labels(config, src)
+          if (anyDuplicated(derived$keys)) {
+            warning(
+              "source_data contains duplicate row IDs in column '",
+              config$row_id_col,
+              "'. Only the last occurrence is used.",
+              call. = FALSE
+            )
+          }
           new_keys <- derived$keys
           new_labels <- derived$labels
 
@@ -689,7 +699,9 @@ config_table_server <- function(
 
       # Build data frame skeleton
       tbl <- .build_table_df(
-        config, current_rows, settings,
+        config,
+        current_rows,
+        settings,
         effective_keys = current_keys,
         effective_labels = current_labels,
         source_snapshot = src_snap
@@ -697,7 +709,11 @@ config_table_server <- function(
 
       # Build colDefs
       col_defs <- .build_col_defs(
-        config, ns, current_rows, settings, tbl,
+        config,
+        ns,
+        current_rows,
+        settings,
+        tbl,
         effective_keys = current_keys,
         effective_labels = current_labels,
         source_snapshot = src_snap
