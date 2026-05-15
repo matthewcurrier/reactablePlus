@@ -20,6 +20,7 @@ table_config(
   row_label_fn = NULL,
   display_cols = NULL,
   selectable = FALSE,
+  click_to_select = FALSE,
   show_reset = FALSE,
   gear_toggles = NULL,
   interactions = list(),
@@ -90,6 +91,13 @@ table_config(
   Logical. If `TRUE`, a checkbox column is prepended and row selection
   is tracked. Required when any column has a `gate` condition with
   `type = "selected"`. Default `FALSE`.
+
+- click_to_select:
+
+  Logical. If `TRUE`, clicking on the badge column or any display column
+  toggles the row's selection checkbox. Requires `selectable = TRUE`.
+  Widget columns are excluded — they have their own click interactions.
+  Default `FALSE`.
 
 - show_reset:
 
