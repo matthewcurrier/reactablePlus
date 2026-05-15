@@ -56,6 +56,8 @@ fill-down, gear toggles, and data marshaling.
   : Config-driven Editable Table UI
 - [`config_table_server()`](https://matthewcurrier.github.io/reactablePlus/reference/config_table_server.md)
   : Config-driven Editable Table Server
+- [`display_col()`](https://matthewcurrier.github.io/reactablePlus/reference/display_col.md)
+  : Build a read-only display column specification
 - [`table_config()`](https://matthewcurrier.github.io/reactablePlus/reference/table_config.md)
   : Build a table configuration
 - [`widget_col()`](https://matthewcurrier.github.io/reactablePlus/reference/widget_col.md)

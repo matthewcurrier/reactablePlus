@@ -12,9 +12,13 @@ fill-down, gating) work.
 
 ``` r
 table_config(
-  row_keys,
-  row_labels,
+  row_keys = NULL,
+  row_labels = NULL,
   columns,
+  row_id_col = NULL,
+  row_label_col = NULL,
+  row_label_fn = NULL,
+  display_cols = NULL,
   selectable = FALSE,
   show_reset = FALSE,
   gear_toggles = NULL,
@@ -36,16 +40,50 @@ table_config(
 
 - row_keys:
 
-  Character vector of row identifiers (e.g. grade keys).
+  Character vector of row identifiers (e.g. grade keys). Required in
+  static mode. In dynamic mode, defaults to `character(0)` — rows are
+  derived from `source_data` at runtime.
 
 - row_labels:
 
   Character vector of display labels (same length as `row_keys`).
+  Required in static mode. In dynamic mode, defaults to `character(0)` —
+  labels are derived via `row_label_col` or `row_label_fn`.
 
 - columns:
 
   List of column specs built with
   [`widget_col()`](https://matthewcurrier.github.io/reactablePlus/reference/widget_col.md).
+
+- row_id_col:
+
+  `character(1)` or `NULL`. The name of the column in `source_data` that
+  uniquely identifies each row. When non-NULL the config operates in
+  dynamic mode. Default `NULL` (static mode).
+
+- row_label_col:
+
+  `character(1)` or `NULL`. The name of the column in `source_data` to
+  use as the display label. Ignored when `row_id_col` is `NULL`. Exactly
+  one of `row_label_col` or `row_label_fn` must be supplied in dynamic
+  mode.
+
+- row_label_fn:
+
+  `function` or `NULL`. A function `(source_data_row)` -\>
+  `character(1)` that computes a display label from a single row (a
+  one-row data frame) of `source_data`. Ignored when `row_id_col` is
+  `NULL`. Exactly one of `row_label_col` or `row_label_fn` must be
+  supplied in dynamic mode.
+
+- display_cols:
+
+  List of
+  [`display_col()`](https://matthewcurrier.github.io/reactablePlus/reference/display_col.md)
+  specs, or `NULL`. Read-only columns whose values are drawn from
+  `source_data` in dynamic mode. Displayed between the badge column and
+  the editable widget columns. Requires dynamic mode (`row_id_col` must
+  be set). Default `NULL` (no display columns).
 
 - selectable:
 
@@ -130,6 +168,19 @@ A `table_config` list (S3 class `"table_config"`).
 
 ## Details
 
+Two modes are supported:
+
+**Static mode** (default): rows are fixed at config time via `row_keys`
+/ `row_labels`. Use when the set of editable rows is known up front
+(e.g. a grade roster).
+
+**Dynamic mode**: rows are derived at runtime from a reactive
+`source_data` data frame passed to
+[`config_table_server()`](https://matthewcurrier.github.io/reactablePlus/reference/config_table_server.md).
+Enable by supplying `row_id_col` and either `row_label_col` or
+`row_label_fn`. In this mode `row_keys` / `row_labels` are optional
+(default to `character(0)`).
+
 ### Interactions
 
 `interactions$mutual_exclusion`: a list of rules, each a list with
@@ -149,10 +200,21 @@ automatically disabled until all conditions are met. Controller columns
 referenced in `gate` conditions are automatically marked
 `triggers_rerender = TRUE` so the table updates when they change.
 
+### Dynamic mode
+
+When `row_id_col` is non-NULL, the config is in dynamic mode. Rows are
+not fixed at config time — they are derived from the `source_data`
+reactive at runtime. Each time `source_data` changes, the module merges
+the new row set with existing state: user-entered values for rows that
+survive are preserved, new rows receive `empty_value` defaults, and
+departed rows' state is retained internally so it restores if those rows
+reappear.
+
 ## Examples
 
 ``` r
 if (FALSE) { # \dontrun{
+# Static mode — rows fixed at config time
 cfg <- table_config(
   row_keys   = c("PK", "K", "01"),
   row_labels = c("PreK", "K", "1st"),
@@ -165,6 +227,29 @@ cfg <- table_config(
   badge_render_fn = function(row_key, row_label) {
     css_class <- paste0("grade-badge g-", row_key)
     sprintf('<span class="%s">%s</span>', css_class, row_label)
+  }
+)
+
+# Dynamic mode — rows derived from source_data at runtime
+cfg_dyn <- table_config(
+  row_id_col    = "student_id",
+  row_label_col = "student_name",
+  columns = list(
+    widget_col("status", "dropdown", "Status",
+      options = list(choices = c("Active", "Inactive"))
+    ),
+    widget_col("score", "numeric", "Score",
+      options = list(min = 0, max = 100)
+    )
+  ),
+  selectable = TRUE,
+  to_output_fn = function(row_state, row_key) {
+    data.frame(
+      id     = row_key,
+      status = row_state$status %||% NA_character_,
+      score  = row_state$score %||% NA_real_,
+      stringsAsFactors = FALSE
+    )
   }
 )
 } # }

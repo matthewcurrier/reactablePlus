@@ -17,17 +17,17 @@ runExample(example = NULL, port = NULL)
 
   `"inventory"`
 
-  :   Product inventory tracker – all 6 primitive input types,
+  :   Product inventory tracker — all 6 primitive input types,
       value-based gating, reset, badge column.
 
   `"roster"`
 
-  :   Team roster – row selection, chained selection + value gating,
+  :   Team roster — row selection, chained selection + value gating,
       reset, selected_ids output.
 
   `"evaluations"`
 
-  :   Student evaluations – attendance_picker with custom sections,
+  :   Student evaluations — attendance_picker with custom sections,
       notes_input, badge_render_fn, row_class_fn, mixing picker and
       primitive columns.
 
