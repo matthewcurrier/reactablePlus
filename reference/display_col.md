@@ -104,7 +104,7 @@ display_col("status", "Status", render_fn = function(value, row_key) {
 #>     else "badge-muted"
 #>     sprintf("<span class=\"%s\">%s</span>", cls, value)
 #> }
-#> <environment: 0x55986a176ca8>
+#> <environment: 0x560c02565480>
 #> 
 #> attr(,"class")
 #> [1] "display_col"
