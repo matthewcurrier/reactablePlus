@@ -1,0 +1,373 @@
+# Using Config Table with reactablePlus
+
+This article walks through a practical use case for `config_table`: a
+student grade entry form backed by a SQLite database. We define the
+table declaratively with
+[`table_config()`](https://matthewcurrier.github.io/reactablePlus/reference/table_config.md)
+and
+[`widget_col()`](https://matthewcurrier.github.io/reactablePlus/reference/widget_col.md),
+wire it into a Shiny app, and add persistence with a few helper
+functions.
+
+## The table
+
+We want a table where a teacher can see each student-course pair, pick a
+letter grade from a dropdown, and optionally add notes. Three students,
+two courses, six rows.
+
+``` r
+
+library(shiny)
+library(reactablePlus)
+
+roster <- data.frame(
+  row_id       = c("s1_c1", "s1_c2", "s2_c1", "s2_c2", "s3_c1", "s3_c2"),
+  student_name = c("Amara Johnson", "Amara Johnson",
+                   "Ben Martinez",  "Ben Martinez",
+                   "Clara Chen",    "Clara Chen"),
+  class_name   = c("Geometry", "Literature",
+                   "Geometry", "Literature",
+                   "Geometry", "Literature"),
+  student_id   = c(1L, 1L, 2L, 2L, 3L, 3L),
+  class_id     = c(1L, 2L, 1L, 2L, 1L, 2L),
+  stringsAsFactors = FALSE
+)
+```
+
+The `row_id` column uniquely identifies each row. `student_name` and
+`class_name` are display-only. `student_id` and `class_id` travel along
+silently – we’ll need them later for saving.
+
+Now define the table with
+[`table_config()`](https://matthewcurrier.github.io/reactablePlus/reference/table_config.md)
+and
+[`widget_col()`](https://matthewcurrier.github.io/reactablePlus/reference/widget_col.md).
+
+``` r
+
+cfg <- table_config(
+  row_keys   = roster$row_id,
+  row_labels = paste(roster$student_name, "--", roster$class_name),
+
+  columns = list(
+    widget_col("grade", "dropdown", "Grade",
+      options = list(
+        choices = c("A+", "A", "A-",
+                    "B+", "B", "B-",
+                    "C+", "C", "C-",
+                    "D+", "D", "D-",
+                    "F")
+      )
+    ),
+    widget_col("notes", "text", "Notes",
+      min_width = 200,
+      options = list(max_chars = 200, placeholder = "Optional notes...")
+    )
+  ),
+
+  # Show the student-course labels as a badge column
+  badge_col   = "label",
+  badge_label = "Student / Course",
+
+  show_reset = TRUE,
+
+  to_output_fn = function(row_state, row_key) {
+    data.frame(
+      row_id = row_key,
+      grade  = if (is.null(row_state$grade) || is.na(row_state$grade)) {
+        NA_character_
+      } else {
+        as.character(row_state$grade)
+      },
+      notes = row_state$notes %||% "",
+      stringsAsFactors = FALSE
+    )
+  },
+
+  from_saved_fn = function(db_row, col_specs) {
+    list(
+      grade = if (!is.null(db_row$grade)) as.character(db_row$grade) else NA_character_,
+      notes = if (!is.null(db_row$notes)) as.character(db_row$notes) else ""
+    )
+  }
+)
+```
+
+The grade choices are a plain character vector – the simplest format.
+[`normalize_choices()`](https://matthewcurrier.github.io/reactablePlus/reference/normalize_choices.md)
+converts them internally so label and value are the same string.
+
+Wire it into a minimal app.
+
+``` r
+
+ui <- fluidPage(
+  titlePanel("Student Grade Entry"),
+  config_table_ui("grades", cfg)
+)
+
+server <- function(input, output, session) {
+  config_table_server("grades", cfg)
+}
+
+shinyApp(ui, server)
+```
+
+That’s a working editable table with a reset button. Every row gets a
+grade dropdown and a notes field, rendered inline in a reactable. The
+module handles input wiring, state tracking, and data collection.
+
+But the data disappears when the app restarts. Let’s fix that.
+
+## Adding a database
+
+We’ll use a single SQLite table to store grade entries. One row per
+student-course pair, with an auto-incrementing ID.
+
+``` r
+
+library(DBI)
+library(RSQLite)
+
+create_database <- function(db_path = "grades.sqlite") {
+  con <- dbConnect(SQLite(), db_path)
+
+  dbExecute(con, "
+    CREATE TABLE IF NOT EXISTS student_grades (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      student_id INTEGER NOT NULL,
+      class_id   INTEGER NOT NULL,
+      grade      TEXT,
+      notes      TEXT,
+      UNIQUE(student_id, class_id)
+    )
+  ")
+
+  dbDisconnect(con)
+  message("Database created at: ", db_path)
+}
+
+# Run once
+create_database()
+```
+
+The `UNIQUE(student_id, class_id)` constraint means each student can
+have at most one grade per course. We’ll use this for upserts when
+saving.
+
+## Loading saved grades
+
+When the app starts, we check if any grades were saved previously and
+feed them back into the table via `data_r`.
+
+``` r
+
+load_existing <- function(con, roster) {
+  saved <- dbReadTable(con, "student_grades")
+  if (nrow(saved) == 0) return(NULL)
+
+  saved |>
+    dplyr::mutate(row_id = paste0("s", student_id, "_c", class_id)) |>
+    dplyr::select(row_id, grade, notes)
+}
+```
+
+The `from_saved_fn` we defined in the config handles parsing each saved
+row into the column state that `config_table_server` expects.
+
+## Saving grades
+
+When the teacher clicks Save, we read the module’s `get_data()` reactive
+– a data frame with `row_id`, `grade`, and `notes` – and upsert each row
+into the database.
+
+``` r
+
+save_grades <- function(con, current_data, roster) {
+  if (is.null(current_data) || nrow(current_data) == 0) return()
+
+  to_save <- current_data |>
+    dplyr::left_join(
+      roster |> dplyr::select(row_id, student_id, class_id),
+      by = "row_id"
+    ) |>
+    dplyr::filter(!is.na(grade) & nchar(grade) > 0)
+
+  if (nrow(to_save) == 0) return()
+
+  purrr::walk(seq_len(nrow(to_save)), function(i) {
+    row <- to_save[i, ]
+    dbExecute(con, "
+      INSERT INTO student_grades (student_id, class_id, grade, notes)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(student_id, class_id)
+      DO UPDATE SET grade = ?, notes = ?
+    ", params = list(
+      row$student_id, row$class_id, row$grade, row$notes,
+      row$grade, row$notes
+    ))
+  })
+
+  showNotification(
+    paste("Saved", nrow(to_save), "grade entries."),
+    type = "message"
+  )
+}
+```
+
+## The complete app
+
+Everything wired together.
+
+``` r
+
+library(shiny)
+library(reactablePlus)
+library(DBI)
+library(RSQLite)
+library(dplyr)
+
+# -- Roster -------------------------------------------------------------------
+roster <- data.frame(
+  row_id       = c("s1_c1", "s1_c2", "s2_c1", "s2_c2", "s3_c1", "s3_c2"),
+  student_name = c("Amara Johnson", "Amara Johnson",
+                   "Ben Martinez",  "Ben Martinez",
+                   "Clara Chen",    "Clara Chen"),
+  class_name   = c("Geometry", "Literature",
+                   "Geometry", "Literature",
+                   "Geometry", "Literature"),
+  student_id   = c(1L, 1L, 2L, 2L, 3L, 3L),
+  class_id     = c(1L, 2L, 1L, 2L, 1L, 2L),
+  stringsAsFactors = FALSE
+)
+
+# -- Config -------------------------------------------------------------------
+cfg <- table_config(
+  row_keys   = roster$row_id,
+  row_labels = paste(roster$student_name, "--", roster$class_name),
+
+  columns = list(
+    widget_col("grade", "dropdown", "Grade",
+      options = list(
+        choices = c("A+", "A", "A-", "B+", "B", "B-",
+                    "C+", "C", "C-", "D+", "D", "D-", "F")
+      )
+    ),
+    widget_col("notes", "text", "Notes",
+      min_width = 200,
+      options = list(max_chars = 200, placeholder = "Optional notes...")
+    )
+  ),
+
+  badge_col   = "label",
+  badge_label = "Student / Course",
+  show_reset  = TRUE,
+
+  to_output_fn = function(row_state, row_key) {
+    data.frame(
+      row_id = row_key,
+      grade  = if (is.null(row_state$grade) || is.na(row_state$grade)) {
+        NA_character_
+      } else {
+        as.character(row_state$grade)
+      },
+      notes = row_state$notes %||% "",
+      stringsAsFactors = FALSE
+    )
+  },
+
+  from_saved_fn = function(db_row, col_specs) {
+    list(
+      grade = if (!is.null(db_row$grade)) as.character(db_row$grade) else NA_character_,
+      notes = if (!is.null(db_row$notes)) as.character(db_row$notes) else ""
+    )
+  }
+)
+
+# -- Helpers ------------------------------------------------------------------
+load_existing <- function(con, roster) {
+  saved <- dbReadTable(con, "student_grades")
+  if (nrow(saved) == 0) return(NULL)
+
+  saved |>
+    mutate(row_id = paste0("s", student_id, "_c", class_id)) |>
+    select(row_id, grade, notes)
+}
+
+save_grades <- function(con, current_data, roster) {
+  if (is.null(current_data) || nrow(current_data) == 0) return()
+
+  to_save <- current_data |>
+    left_join(
+      roster |> select(row_id, student_id, class_id),
+      by = "row_id"
+    ) |>
+    filter(!is.na(grade) & nchar(grade) > 0)
+
+  if (nrow(to_save) == 0) return()
+
+  purrr::walk(seq_len(nrow(to_save)), function(i) {
+    row <- to_save[i, ]
+    dbExecute(con, "
+      INSERT INTO student_grades (student_id, class_id, grade, notes)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(student_id, class_id)
+      DO UPDATE SET grade = ?, notes = ?
+    ", params = list(
+      row$student_id, row$class_id, row$grade, row$notes,
+      row$grade, row$notes
+    ))
+  })
+
+  showNotification(
+    paste("Saved", nrow(to_save), "grade entries."),
+    type = "message"
+  )
+}
+
+# -- App ----------------------------------------------------------------------
+ui <- fluidPage(
+  titlePanel("Student Grade Entry"),
+  config_table_ui("grades", cfg),
+  br(),
+  actionButton("save", "Save Grades", class = "btn-primary")
+)
+
+server <- function(input, output, session) {
+  con <- dbConnect(SQLite(), "grades.sqlite")
+  onStop(function() dbDisconnect(con))
+
+  existing_data <- load_existing(con, roster)
+
+  result <- config_table_server("grades", cfg,
+    data_r = reactive(existing_data)
+  )
+
+  observeEvent(input$save, {
+    save_grades(con, result$get_data(), roster)
+  })
+}
+
+shinyApp(ui, server)
+```
+
+Run `create_database()` once, then launch the app. Pick grades, add
+notes, click Save. Restart the app – your entries are still there.
+
+## What the module handles for you
+
+This six-row table has 12 inputs (6 dropdowns + 6 text fields). A table
+with 30 students and 5 courses would have 300. Without
+[`config_table_server()`](https://matthewcurrier.github.io/reactablePlus/reference/config_table_server.md),
+you’d build and track each one manually, synchronize them with the
+reactable display, and collect all the values back into a data frame
+yourself. The module reduces that to a
+[`table_config()`](https://matthewcurrier.github.io/reactablePlus/reference/table_config.md),
+a couple of
+[`widget_col()`](https://matthewcurrier.github.io/reactablePlus/reference/widget_col.md)
+calls, and a reactive.
+
+The pattern shown here – load from a database, edit in a table, save
+back – generalizes to any domain: inventory management, survey
+responses, data annotation, scheduling, or anywhere you need structured
+inline editing in Shiny.
