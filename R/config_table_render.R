@@ -34,7 +34,7 @@
 #' onclick handler that toggles the row's selection checkbox. The
 #' wrapper is a block-level element with its own padding, intended to
 #' be placed inside a cell whose native padding has been zeroed out
-#' via [.click_to_select_cell_style]. This avoids any assumptions
+#' via `.click_to_select_cell_style`. This avoids any assumptions
 #' about the table's CSS.
 #'
 #' @param html_content Character. The HTML to wrap.
