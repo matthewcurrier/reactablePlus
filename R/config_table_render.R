@@ -13,6 +13,8 @@
 # current_rows, settings, and return HTML or colDef objects.
 # =============================================================================
 
+#' @importFrom digest digest
+
 # ── Click-to-select helper ───────────────────────────────────────────────────
 # Inline JS that finds the selection checkbox in the same row and
 # toggles it. Used by badge and display column cells when
@@ -330,11 +332,50 @@
 
 
 #' Build reactable colDef list from config.
+#' Build a cache key for a single widget cell.
 #'
+#' Encodes every input that affects the HTML output of a widget cell:
+#' column id, row key, serialised cell value (via [digest::digest]),
+#' gate-open state, and a digest of the settings list (so gear-toggle
+#' changes that affect content, e.g. showNCESId, produce a new key).
+#'
+#' Mutual-exclusion displacement state is intentionally excluded from the
+#' key. Displacement is managed in-place by the JS `rp_set_displaced`
+#' handler and does not change the underlying widget HTML — caching on
+#' displacement state would cause unnecessary cache misses.
+#'
+#' @param col_id    Character. Column identifier.
+#' @param row_key   Character. Row key.
+#' @param cell_val  Any. Current cell value from `row[[col_id]]`.
+#' @param gate_open Logical. Whether the gate for this cell is open.
+#' @param settings  List. Current gear settings (may affect rendered HTML).
+#' @return Character. A cache key suitable for use as an environment name.
+#' @noRd
+.cell_cache_key <- function(col_id, row_key, cell_val, gate_open, settings) {
+  paste0(
+    col_id, ":",
+    row_key, ":",
+    digest::digest(cell_val, algo = "xxhash32"), ":",
+    if (gate_open) "1" else "0", ":",
+    digest::digest(settings,  algo = "xxhash32")
+  )
+}
+
+
+#' Build a colDef list for all columns in a config_table.
+#'
+#' @param config       A `table_config` object.
+#' @param ns           Shiny namespace function.
+#' @param current_rows Named list of current row states.
+#' @param settings     List of current gear settings.
+#' @param tbl          Data frame skeleton produced by `.build_table_df()`.
 #' @param effective_keys Optional character vector of current row keys.
 #' @param effective_labels Optional character vector of current labels.
 #' @param source_snapshot Optional data frame. The current
 #'   `source_data()` snapshot, used for display column rendering.
+#' @param cell_cache   An environment used as a key→value store for
+#'   memoised widget cell HTML strings. Pass `NULL` to disable caching
+#'   (used in tests). Default `NULL`.
 #'
 #' @noRd
 .build_col_defs <- function(
@@ -345,7 +386,8 @@
   tbl,
   effective_keys = NULL,
   effective_labels = NULL,
-  source_snapshot = NULL
+  source_snapshot = NULL,
+  cell_cache = NULL
 ) {
   col_defs <- list()
 
@@ -499,7 +541,8 @@
   # the reactable definition. This lets us toggle column visibility
   # without a full re-render.
   widget_defs <- purrr::map(config$columns, function(cs) {
-    .build_widget_coldef(cs, ns, current_rows, settings, tbl, config)
+    .build_widget_coldef(cs, ns, current_rows, settings, tbl, config,
+                         cell_cache = cell_cache)
   }) |>
     purrr::set_names(purrr::map_chr(config$columns, "id"))
 
@@ -585,7 +628,8 @@
 
 #' Build a single colDef for a widget column.
 #' @noRd
-.build_widget_coldef <- function(cs, ns, current_rows, settings, tbl, config) {
+.build_widget_coldef <- function(cs, ns, current_rows, settings, tbl, config,
+                                 cell_cache = NULL) {
   col_def_args <- list(
     name = cs$label,
     html = TRUE
@@ -604,114 +648,132 @@
     config$interactions$mutual_exclusion %||% list()
   )
 
+  # ── Cache helper ──────────────────────────────────────────────────────
+  # Returns a cached HTML string on a hit, or evaluates `expr` and stores
+  # the result on a miss. When cell_cache is NULL (tests / callers that
+  # opt-out), the expression is always evaluated fresh.
+  .cached <- function(key, expr) {
+    if (is.null(cell_cache)) return(expr)
+    cached_val <- tryCatch(get(key, envir = cell_cache, inherits = FALSE),
+                           error = function(e) NULL)
+    if (!is.null(cached_val)) return(cached_val)
+    result <- expr
+    assign(key, result, envir = cell_cache)
+    result
+  }
+
   col_def_args$cell <- switch(
     cs$type,
 
     search_picker = function(value, index) {
       gk <- tbl$.row_key[index]
       row <- current_rows[[gk]]
-      if (!is.list(row)) {
-        row <- list()
-      }
+      if (!is.list(row)) row <- list()
 
       opts <- cs$options
-      widget_html <- as.character(searchPickerInput(
-        inputId = ns(paste0(cs$id, "_", gk)),
-        value = row[[cs$id]],
-        show_nces_id = isTRUE(
-          settings$showNCESId %||% opts$show_nces_id %||% TRUE
-        ),
-        grade_label = config$label_map[[gk]],
-        grade_key = gk,
-        ns = ns(""),
-        trigger_label = opts$trigger_label %||% "+ Pick school",
-        popover_title = opts$popover_title %||% "Find school",
-        search_placeholder = opts$search_placeholder,
-        empty_hint = opts$empty_hint,
-        no_match_hint = opts$no_match_hint,
-        show_fill_down = opts$show_fill_down %||% TRUE
-      ))
-      .wrap_cell(
-        widget_html,
-        me_rules,
-        row,
-        ns_cell_key = ns(paste0(cs$id, "-", gk))
-      )
+      gate_open <- .is_gate_open(cs$gate, row)
+      cache_key <- .cell_cache_key(cs$id, gk, row[[cs$id]], gate_open, settings)
+
+      .cached(cache_key, {
+        widget_html <- as.character(searchPickerInput(
+          inputId = ns(paste0(cs$id, "_", gk)),
+          value = row[[cs$id]],
+          show_nces_id = isTRUE(
+            settings$showNCESId %||% opts$show_nces_id %||% TRUE
+          ),
+          grade_label = config$label_map[[gk]],
+          grade_key = gk,
+          ns = ns(""),
+          trigger_label = opts$trigger_label %||% "+ Pick school",
+          popover_title = opts$popover_title %||% "Find school",
+          search_placeholder = opts$search_placeholder,
+          empty_hint = opts$empty_hint,
+          no_match_hint = opts$no_match_hint,
+          show_fill_down = opts$show_fill_down %||% TRUE
+        ))
+        .wrap_cell(
+          widget_html,
+          me_rules,
+          row,
+          ns_cell_key = ns(paste0(cs$id, "-", gk))
+        )
+      })
     },
 
     attendance_picker = function(value, index) {
       gk <- tbl$.row_key[index]
       row <- current_rows[[gk]]
-      if (!is.list(row)) {
-        row <- list()
-      }
+      if (!is.list(row)) row <- list()
 
       opts <- cs$options
-      widget_html <- as.character(attendancePickerInput(
-        inputId = ns(paste0(cs$id, "_", gk)),
-        value = row[[cs$id]],
-        grade_label = config$label_map[[gk]],
-        sections = opts$sections,
-        trigger_label = opts$trigger_label,
-        popover_title = opts$popover_title,
-        show_notes = opts$show_notes %||% TRUE,
-        notes_placeholder = opts$notes_placeholder
-      ))
-      .wrap_cell(
-        widget_html,
-        me_rules,
-        row,
-        ns_cell_key = ns(paste0(cs$id, "-", gk))
-      )
+      gate_open <- .is_gate_open(cs$gate, row)
+      cache_key <- .cell_cache_key(cs$id, gk, row[[cs$id]], gate_open, settings)
+
+      .cached(cache_key, {
+        widget_html <- as.character(attendancePickerInput(
+          inputId = ns(paste0(cs$id, "_", gk)),
+          value = row[[cs$id]],
+          grade_label = config$label_map[[gk]],
+          sections = opts$sections,
+          trigger_label = opts$trigger_label,
+          popover_title = opts$popover_title,
+          show_notes = opts$show_notes %||% TRUE,
+          notes_placeholder = opts$notes_placeholder
+        ))
+        .wrap_cell(
+          widget_html,
+          me_rules,
+          row,
+          ns_cell_key = ns(paste0(cs$id, "-", gk))
+        )
+      })
     },
 
     homeschool_picker = function(value, index) {
       gk <- tbl$.row_key[index]
       row <- current_rows[[gk]]
-      if (!is.list(row)) {
-        row <- list()
-      }
+      if (!is.list(row)) row <- list()
 
       opts <- cs$options
-      widget_html <- as.character(homeschoolPickerInput(
-        inputId = ns(paste0(cs$id, "_", gk)),
-        value = row[[cs$id]],
-        grade_label = config$label_map[[gk]],
-        grade_key = gk,
-        ns = ns(""),
-        providers = opts$providers,
-        provider_label = opts$provider_label,
-        curriculum_label = opts$curriculum_label,
-        curriculum_placeholder = opts$curriculum_placeholder,
-        show_curriculum = opts$show_curriculum %||% TRUE,
-        show_notes = opts$show_notes %||% TRUE,
-        notes_placeholder = opts$notes_placeholder,
-        trigger_label = opts$trigger_label,
-        trigger_sub_label = opts$trigger_sub_label,
-        popover_title = opts$popover_title,
-        popover_title_sub = opts$popover_title_sub,
-        filled_pill_label = opts$filled_pill_label,
-        clear_label = opts$clear_label
-      ))
-      .wrap_cell(
-        widget_html,
-        me_rules,
-        row,
-        ns_cell_key = ns(paste0(cs$id, "-", gk))
-      )
+      gate_open <- .is_gate_open(cs$gate, row)
+      cache_key <- .cell_cache_key(cs$id, gk, row[[cs$id]], gate_open, settings)
+
+      .cached(cache_key, {
+        widget_html <- as.character(homeschoolPickerInput(
+          inputId = ns(paste0(cs$id, "_", gk)),
+          value = row[[cs$id]],
+          grade_label = config$label_map[[gk]],
+          grade_key = gk,
+          ns = ns(""),
+          providers = opts$providers,
+          provider_label = opts$provider_label,
+          curriculum_label = opts$curriculum_label,
+          curriculum_placeholder = opts$curriculum_placeholder,
+          show_curriculum = opts$show_curriculum %||% TRUE,
+          show_notes = opts$show_notes %||% TRUE,
+          notes_placeholder = opts$notes_placeholder,
+          trigger_label = opts$trigger_label,
+          trigger_sub_label = opts$trigger_sub_label,
+          popover_title = opts$popover_title,
+          popover_title_sub = opts$popover_title_sub,
+          filled_pill_label = opts$filled_pill_label,
+          clear_label = opts$clear_label
+        ))
+        .wrap_cell(
+          widget_html,
+          me_rules,
+          row,
+          ns_cell_key = ns(paste0(cs$id, "-", gk))
+        )
+      })
     },
 
     notes_input = function(value, index) {
       gk <- tbl$.row_key[index]
       row <- current_rows[[gk]]
-      if (!is.list(row)) {
-        row <- list()
-      }
+      if (!is.list(row)) row <- list()
 
       opts <- cs$options
-      default_placeholder <- opts$placeholder %||% "Optional"
-
-      # Dynamic placeholder from mutual exclusion
       me_active <- purrr::some(
         config$interactions$mutual_exclusion %||% list(),
         ~ !is.null(row[[.x$when_on]])
@@ -719,19 +781,20 @@
       placeholder <- if (me_active && !is.null(opts$alt_placeholder)) {
         opts$alt_placeholder
       } else {
-        default_placeholder
+        opts$placeholder %||% "Optional"
       }
+      note_val <- row[[cs$id]] %||% ""
 
-      note_val <- row[[cs$id]]
-      if (is.null(note_val)) {
-        note_val <- ""
-      }
+      gate_open <- .is_gate_open(cs$gate, row)
+      cache_key <- .cell_cache_key(cs$id, gk, note_val, gate_open, settings)
 
-      as.character(notesInput(
-        inputId = ns(paste0(cs$id, "_", gk)),
-        value = note_val,
-        placeholder = placeholder
-      ))
+      .cached(cache_key, {
+        as.character(notesInput(
+          inputId = ns(paste0(cs$id, "_", gk)),
+          value = note_val,
+          placeholder = placeholder
+        ))
+      })
     },
 
     custom = function(value, index) {

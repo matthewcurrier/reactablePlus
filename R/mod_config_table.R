@@ -257,6 +257,30 @@ config_table_server <- function(
 
     render_key <- shiny::reactiveVal(0L)
 
+    # ── Cell HTML cache ───────────────────────────────────────────────────
+    # A module-scoped environment used as a key→value store for memoised
+    # cell HTML strings. Lives for the lifetime of the module session so
+    # it persists across render_key increments.
+    #
+    # Cache keys encode everything that can affect a cell's HTML output:
+    # column id, row key, serialised cell value, gate-open state, and a
+    # digest of the settings list (gear toggles that affect content, e.g.
+    # showNCESId). When any of those change the key changes and a fresh
+    # string is computed and stored.
+    #
+    # The cache is invalidated wholesale on structural re-renders (source_data
+    # change, context switch, reset) by assigning a new environment. This is
+    # cheaper than iterating and removes stale entries for departed rows.
+    .cell_cache <- new.env(hash = TRUE, parent = emptyenv())
+
+    # Wholesale cache invalidation: replace with a fresh environment.
+    # Called before any render_key increment that represents a structural
+    # change (row set changed, context switch, reset) so departed-row
+    # entries don't accumulate and stale HTML is never served.
+    .invalidate_cell_cache <- function() {
+      .cell_cache <<- new.env(hash = TRUE, parent = emptyenv())
+    }
+
     # Seed from saved data (static mode only at init — dynamic mode
     # defers to the source_data observer which fires first).
     if (!is_dynamic && !is_appendable) {
@@ -293,16 +317,28 @@ config_table_server <- function(
       )
 
       # Selection observers
+      # Checkbox state is pushed to the client via rp_set_checkbox rather
+      # than a full re-render. The server still tracks .selected in rows()
+      # so get_data() and selected_ids() stay accurate, but the DOM update
+      # is a targeted in-place message — same pattern used by mutual
+      # exclusion clearing.
       if (isTRUE(config$selectable)) {
         purrr::walk(unwired, function(local_gk) {
           input_id <- paste0(".selected_", local_gk)
           shiny::observeEvent(
             input[[input_id]],
             {
+              new_checked <- isTRUE(input[[input_id]])
               rs <- rows()
-              rs[[local_gk]]$.selected <- isTRUE(input[[input_id]])
+              rs[[local_gk]]$.selected <- new_checked
               rows(rs)
-              render_key(render_key() + 1L)
+              session$sendCustomMessage(
+                "rp_set_checkbox",
+                list(
+                  input_id = ns(input_id),
+                  checked  = new_checked
+                )
+              )
             },
             ignoreInit = TRUE
           )
@@ -333,6 +369,7 @@ config_table_server <- function(
             effective_label_map(list())
             # Merge preserves departed rows' state
             rows(.merge_dynamic_rows(config, character(0), rows()))
+            .invalidate_cell_cache()
             render_key(render_key() + 1L)
             return(invisible(NULL))
           }
@@ -385,6 +422,7 @@ config_table_server <- function(
           # Wire observers for any new keys
           .wire_new_keys(new_keys)
 
+          .invalidate_cell_cache()
           render_key(render_key() + 1L)
         },
         ignoreNULL = FALSE,
@@ -407,6 +445,7 @@ config_table_server <- function(
           } else {
             rows(.rows_from_saved(config, saved_data))
           }
+          .invalidate_cell_cache()
           render_key(render_key() + 1L)
         },
         ignoreInit = TRUE,
@@ -448,6 +487,7 @@ config_table_server <- function(
           })
 
           rows(rs)
+          .invalidate_cell_cache()
           render_key(render_key() + 1L)
         },
         ignoreInit = TRUE,
@@ -490,6 +530,7 @@ config_table_server <- function(
           }
 
           rows(new_rows)
+          .invalidate_cell_cache()
           render_key(render_key() + 1L)
         },
         ignoreNULL = TRUE,
@@ -758,6 +799,7 @@ config_table_server <- function(
         ))
 
         .wire_new_keys(new_key)
+        .invalidate_cell_cache()
         render_key(render_key() + 1L)
       })
     }
@@ -794,6 +836,7 @@ config_table_server <- function(
           new_keys
         ))
 
+        .invalidate_cell_cache()
         render_key(render_key() + 1L)
       })
     }
@@ -838,6 +881,7 @@ config_table_server <- function(
           )
           rows(empty)
         }
+        .invalidate_cell_cache()
         render_key(render_key() + 1L)
       })
     }
@@ -872,7 +916,8 @@ config_table_server <- function(
         tbl,
         effective_keys = current_keys,
         effective_labels = current_labels,
-        source_snapshot = src_snap
+        source_snapshot = src_snap,
+        cell_cache = .cell_cache
       )
 
       wrapper_class <- if (isTRUE(settings$compactRows)) {

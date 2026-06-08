@@ -314,3 +314,82 @@ test_that(".build_empty_row_state works with auto-generated row keys", {
   expect_true(is.na(row$fruit))
   expect_equal(row$qty, 1)
 })
+
+
+# ── Cell HTML cache (.cell_cache_key, .cached inside .build_widget_coldef) ────
+
+test_that(".cell_cache_key returns a stable string for identical inputs", {
+  s <- list(showNCESId = TRUE)
+  k1 <- .cell_cache_key("school", "PK", list(id = "1"), TRUE,  s)
+  k2 <- .cell_cache_key("school", "PK", list(id = "1"), TRUE,  s)
+  expect_identical(k1, k2)
+})
+
+test_that(".cell_cache_key differs when value changes", {
+  s <- list(showNCESId = TRUE)
+  k1 <- .cell_cache_key("school", "PK", list(id = "1"), TRUE, s)
+  k2 <- .cell_cache_key("school", "PK", list(id = "2"), TRUE, s)
+  expect_false(identical(k1, k2))
+})
+
+test_that(".cell_cache_key differs when gate_open changes", {
+  s <- list()
+  k1 <- .cell_cache_key("col", "r1", "val", TRUE,  s)
+  k2 <- .cell_cache_key("col", "r1", "val", FALSE, s)
+  expect_false(identical(k1, k2))
+})
+
+test_that(".cell_cache_key differs when settings change", {
+  k1 <- .cell_cache_key("col", "r1", "val", TRUE, list(showNCESId = TRUE))
+  k2 <- .cell_cache_key("col", "r1", "val", TRUE, list(showNCESId = FALSE))
+  expect_false(identical(k1, k2))
+})
+
+test_that(".build_widget_coldef with cell_cache stores and returns cached HTML", {
+  cfg <- table_config(
+    columns = list(widget_col("notes", "notes_input", "Notes"))
+  )
+  current_rows <- list(r1 = list(.row_key = "r1", notes = "hello"))
+  tbl <- .build_table_df(cfg, current_rows, settings = list(),
+                         effective_keys = "r1", effective_labels = "")
+  cache <- new.env(hash = TRUE, parent = emptyenv())
+  ns <- shiny::NS("mod")
+
+  col_def <- .build_widget_coldef(
+    cfg$columns[[1]], ns, current_rows, list(), tbl, cfg,
+    cell_cache = cache
+  )
+
+  # First call — cache miss, HTML is generated and stored
+  html1 <- col_def$cell("hello", 1L)
+  expect_true(length(ls(cache)) > 0L)
+
+  # Mutate the stored value to a sentinel so a cache hit is detectable
+  key <- ls(cache)[[1]]
+  assign(key, "CACHED_SENTINEL", envir = cache)
+
+  # Second call with the same inputs — must return sentinel (cache hit)
+  html2 <- col_def$cell("hello", 1L)
+  expect_identical(html2, "CACHED_SENTINEL")
+})
+
+test_that(".build_widget_coldef with cell_cache = NULL always evaluates fresh", {
+  cfg <- table_config(
+    columns = list(widget_col("notes", "notes_input", "Notes"))
+  )
+  current_rows <- list(r1 = list(.row_key = "r1", notes = "hello"))
+  tbl <- .build_table_df(cfg, current_rows, settings = list(),
+                         effective_keys = "r1", effective_labels = "")
+  ns <- shiny::NS("mod")
+
+  col_def <- .build_widget_coldef(
+    cfg$columns[[1]], ns, current_rows, list(), tbl, cfg,
+    cell_cache = NULL
+  )
+
+  html1 <- col_def$cell("hello", 1L)
+  html2 <- col_def$cell("hello", 1L)
+  # Both calls should produce equivalent HTML (no sentinel, always fresh)
+  expect_identical(html1, html2)
+  expect_match(html1, "hello")
+})

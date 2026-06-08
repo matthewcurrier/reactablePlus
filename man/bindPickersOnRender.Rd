@@ -4,20 +4,34 @@
 \alias{bindPickersOnRender}
 \title{Bind picker inputs after a reactable renders}
 \usage{
-bindPickersOnRender(widget, delay_ms = 300L)
+bindPickersOnRender(widget, fallback_ms = 600L)
 }
 \arguments{
-\item{widget}{A reactable widget.}
+\item{widget}{A reactable widget (the return value of
+\code{\link[reactable:reactable]{reactable::reactable()}}).}
 
-\item{delay_ms}{Milliseconds to wait after render. Default 300.}
+\item{fallback_ms}{Integer. Milliseconds before the safety-net
+\code{setTimeout} fires if the \code{MutationObserver} has not already
+triggered binding. Default \code{600L}. Increase for very large tables
+on slow connections; you will rarely need to change this.}
 }
 \value{
-The widget with the callback attached.
+The widget with the \code{onRender} callback attached.
 }
 \description{
 Wraps a reactable widget with an \code{onRender} callback that initializes
 picker inputs inside table cells. Required because Shiny's \code{bindAll()}
 runs before reactable creates its DOM.
+}
+\details{
+Binding is triggered by a \code{MutationObserver} that watches the table
+container and fires \code{shBindPickers()} the moment reactable paints its
+first picker cell — typically within one animation frame. A plain
+\code{setTimeout} of \code{fallback_ms} milliseconds is kept as a safety net in
+case the observer never fires (empty table, future reactable internals
+change, or environments where \code{MutationObserver} is unavailable).
+Whichever fires first wins; the other is cancelled, so there is no
+double-binding.
 }
 \examples{
 \dontrun{

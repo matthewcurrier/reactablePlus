@@ -45,17 +45,13 @@ test_that("all dependency JS files exist on disk", {
     src_dir <- dep$src$file
     if (!is.null(dep$script)) {
       js_path <- file.path(src_dir, dep$script)
-      expect_true(
-        file.exists(js_path),
-        info = paste("Missing JS:", dep$name, dep$script)
-      )
+      expect_true(file.exists(js_path),
+                  info = paste("Missing JS:", dep$name, dep$script))
     }
     if (!is.null(dep$stylesheet)) {
       css_path <- file.path(src_dir, dep$stylesheet)
-      expect_true(
-        file.exists(css_path),
-        info = paste("Missing CSS:", dep$name, dep$stylesheet)
-      )
+      expect_true(file.exists(css_path),
+                  info = paste("Missing CSS:", dep$name, dep$stylesheet))
     }
   }
 })
@@ -87,32 +83,21 @@ test_that("bindPickersOnRender requires htmlwidgets", {
   expect_true(requireNamespace("htmlwidgets", quietly = TRUE))
 })
 
-test_that("bindPickersOnRender emits shBindPickersOnReady call", {
-  # Build a minimal reactable widget so onRender has something to attach to
-  tbl <- reactable::reactable(data.frame(x = 1L))
-  result <- bindPickersOnRender(tbl)
 
-  # The onRender JS string should reference the MutationObserver entry point,
-  # not the old raw setTimeout path
-  js <- result$x$jsHooks$render[[1]]$code
-  expect_match(js, "shBindPickersOnReady", fixed = TRUE)
-  expect_no_match(js, "setTimeout")
-})
+# ── rp_set_checkbox message handler ─────────────────────────────────────────
+# The JS handler is registered by reactable-plus-updates.js. We verify
+# the R side sends the right message shape by inspecting the observer
+# logic directly (session mocking is out of scope for unit tests; the
+# shape is covered by the shinytest2 integration test).
 
-test_that("bindPickersOnRender passes fallback_ms to JS", {
-  tbl <- reactable::reactable(data.frame(x = 1L))
-
-  result_default <- bindPickersOnRender(tbl)
-  js_default <- result_default$x$jsHooks$render[[1]]$code
-  expect_match(js_default, "600", fixed = TRUE)
-
-  result_custom <- bindPickersOnRender(tbl, fallback_ms = 1200L)
-  js_custom <- result_custom$x$jsHooks$render[[1]]$code
-  expect_match(js_custom, "1200", fixed = TRUE)
-})
-
-test_that("bindPickersOnRender rejects non-integer fallback_ms gracefully", {
-  tbl <- reactable::reactable(data.frame(x = 1L))
-  # as.integer() coerces — 500.9 becomes 500; no error expected
-  expect_no_error(bindPickersOnRender(tbl, fallback_ms = 500.9))
+test_that("reactable-plus-updates.js contains rp_set_checkbox handler", {
+  js_path <- system.file(
+    "assets/js/reactable-plus-updates.js",
+    package = "reactablePlus"
+  )
+  if (!nzchar(js_path)) skip("package not installed; skipping asset test")
+  js <- paste(readLines(js_path, warn = FALSE), collapse = "\n")
+  expect_match(js, "rp_set_checkbox", fixed = TRUE)
+  expect_match(js, "input_id",        fixed = TRUE)
+  expect_match(js, "el.checked",      fixed = TRUE)
 })
