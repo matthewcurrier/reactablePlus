@@ -140,9 +140,23 @@ useSchoolHistory <- function() {
 #' picker inputs inside table cells. Required because Shiny's `bindAll()`
 #' runs before reactable creates its DOM.
 #'
-#' @param widget A reactable widget.
-#' @param delay_ms Milliseconds to wait after render. Default 300.
-#' @return The widget with the callback attached.
+#' Binding is triggered by a `MutationObserver` that watches the table
+#' container and fires `shBindPickers()` the moment reactable paints its
+#' first picker cell — typically within one animation frame. A plain
+#' `setTimeout` of `fallback_ms` milliseconds is kept as a safety net in
+#' case the observer never fires (empty table, future reactable internals
+#' change, or environments where `MutationObserver` is unavailable).
+#' Whichever fires first wins; the other is cancelled, so there is no
+#' double-binding.
+#'
+#' @param widget      A reactable widget (the return value of
+#'   [reactable::reactable()]).
+#' @param fallback_ms Integer. Milliseconds before the safety-net
+#'   `setTimeout` fires if the `MutationObserver` has not already
+#'   triggered binding. Default `600L`. Increase for very large tables
+#'   on slow connections; you will rarely need to change this.
+#'
+#' @return The widget with the `onRender` callback attached.
 #'
 #' @examples
 #' \dontrun{
@@ -158,12 +172,12 @@ useSchoolHistory <- function() {
 #'
 #' @importFrom htmlwidgets onRender
 #' @export
-bindPickersOnRender <- function(widget, delay_ms = 300L) {
+bindPickersOnRender <- function(widget, fallback_ms = 600L) {
   htmlwidgets::onRender(
     widget,
     sprintf(
-      "function(el){setTimeout(function(){window.shBindPickers(el);},%d);}",
-      as.integer(delay_ms)
+      "function(el){window.shBindPickersOnReady(el,%d);}",
+      as.integer(fallback_ms)
     )
   )
 }

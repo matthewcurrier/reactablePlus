@@ -606,10 +606,24 @@
 // htmlwidgets like reactable. This helper manually initializes and
 // subscribes each picker, replicating what bindAll should do.
 //
-// Usage (R side):
-//   htmlwidgets::onRender(tbl, "function(el) {
-//     setTimeout(function() { window.shBindPickers(el); }, 300);
-//   }")
+// Two public entry points:
+//
+//   window.shBindPickers(scope)
+//     Immediately bind all unbound picker elements within `scope`.
+//     Safe to call at any time; already-bound elements are skipped.
+//     Use this when you know the DOM is ready (e.g. in a custom
+//     onRender callback where you control timing yourself).
+//
+//   window.shBindPickersOnReady(el, timeoutMs)
+//     Preferred entry point from bindPickersOnRender(). Watches `el`
+//     with a MutationObserver and calls shBindPickers(el) the moment
+//     any picker selector appears in the subtree — then disconnects.
+//     Falls back to a plain setTimeout after `timeoutMs` ms in case
+//     the observer never fires (e.g. future reactable DOM changes).
+//     Whichever fires first wins; the other is cancelled.
+//
+// Extending the selector list:
+//   window.shBindPickers.addSelector(".my-custom-widget")
 (function () {
   "use strict";
 
@@ -624,6 +638,10 @@
   function getSelector() {
     return _selectors.join(", ");
   }
+
+  // ── shBindPickers ─────────────────────────────────────────────────────
+  // Immediately initialize and subscribe all unbound picker elements
+  // found within `scope` (defaults to document).
 
   window.shBindPickers = function (scope) {
     if (typeof Shiny === "undefined") return;
@@ -679,6 +697,57 @@
       // Send initial value
       Shiny.setInputValue(id, binding.getValue(el));
     });
+  };
+
+  // ── shBindPickersOnReady ──────────────────────────────────────────────
+  // Watch `el` for picker elements via MutationObserver, binding as soon
+  // as any appear. Falls back to a plain setTimeout after `timeoutMs` ms.
+  //
+  // @param {Element} el        - The reactable container element.
+  // @param {number}  timeoutMs - Safety-net timeout in milliseconds.
+
+  window.shBindPickersOnReady = function (el, timeoutMs) {
+    if (typeof Shiny === "undefined") return;
+    if (!el || !el.nodeType) return;
+
+    var done = false;
+
+    function bind() {
+      if (done) return;
+      done = true;
+      if (observer) observer.disconnect();
+      if (timerId) clearTimeout(timerId);
+      window.shBindPickers(el);
+    }
+
+    // MutationObserver: fires as soon as React paints picker cells into
+    // the DOM — typically well under 100 ms, often under 16 ms.
+    var observer = null;
+    if (typeof MutationObserver !== "undefined") {
+      observer = new MutationObserver(function (mutations) {
+        // Scan added nodes for any picker selector. Walking addedNodes is
+        // faster than re-querying the entire subtree on every mutation.
+        var selector = getSelector();
+        for (var m = 0; m < mutations.length; m++) {
+          var added = mutations[m].addedNodes;
+          for (var n = 0; n < added.length; n++) {
+            var node = added[n];
+            if (node.nodeType !== 1) continue; // elements only
+            // The node itself might match, or it might contain matches.
+            if (node.matches(selector) || node.querySelector(selector)) {
+              bind();
+              return; // observer disconnected inside bind()
+            }
+          }
+        }
+      });
+      observer.observe(el, { childList: true, subtree: true });
+    }
+
+    // Safety-net: if the observer never fires (empty table, future
+    // reactable internals change, MutationObserver unavailable), fall
+    // back to the timeout so binding still happens.
+    var timerId = setTimeout(bind, timeoutMs || 600);
   };
 
   /**
