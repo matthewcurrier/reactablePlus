@@ -49,7 +49,7 @@ runs before reactable creates its DOM.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">bindPickersOnRender</span><span class="op">(</span><span class="va">widget</span>, delay_ms <span class="op">=</span> <span class="fl">300L</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">bindPickersOnRender</span><span class="op">(</span><span class="va">widget</span>, fallback_ms <span class="op">=</span> <span class="fl">600L</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -57,16 +57,31 @@ runs before reactable creates its DOM.</p>
 
 
 <dl><dt id="arg-widget">widget<a class="anchor" aria-label="anchor" href="#arg-widget"></a></dt>
-<dd><p>A reactable widget.</p></dd>
+<dd><p>A reactable widget (the return value of
+<code><a href="https://glin.github.io/reactable/reference/reactable.html" class="external-link">reactable::reactable()</a></code>).</p></dd>
 
 
-<dt id="arg-delay-ms">delay_ms<a class="anchor" aria-label="anchor" href="#arg-delay-ms"></a></dt>
-<dd><p>Milliseconds to wait after render. Default 300.</p></dd>
+<dt id="arg-fallback-ms">fallback_ms<a class="anchor" aria-label="anchor" href="#arg-fallback-ms"></a></dt>
+<dd><p>Integer. Milliseconds before the safety-net
+<code>setTimeout</code> fires if the <code>MutationObserver</code> has not already
+triggered binding. Default <code>600L</code>. Increase for very large tables
+on slow connections; you will rarely need to change this.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>The widget with the callback attached.</p>
+    <p>The widget with the <code>onRender</code> callback attached.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+    <p>Binding is triggered by a <code>MutationObserver</code> that watches the table
+container and fires <code>shBindPickers()</code> the moment reactable paints its
+first picker cell — typically within one animation frame. A plain
+<code>setTimeout</code> of <code>fallback_ms</code> milliseconds is kept as a safety net in
+case the observer never fires (empty table, future reactable internals
+change, or environments where <code>MutationObserver</code> is unavailable).
+Whichever fires first wins; the other is cancelled, so there is no
+double-binding.</p>
     </div>
 
     <div class="section level2">
