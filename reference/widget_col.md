@@ -356,7 +356,7 @@ widget_col("city", "dropdown", "City",
 #>     switch(row_state$state %||% "", CA = c(LA = "la", SF = "sf"), 
 #>         NY = c(NYC = "nyc", Buffalo = "buf"), c("-- pick a state first --"))
 #> }
-#> <environment: 0x55fd6e8567a0>
+#> <environment: 0x560f95c78aa8>
 #> 
 #> $options$choices_depends_on
 #> [1] "state"
