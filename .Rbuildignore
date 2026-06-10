@@ -11,3 +11,4 @@
   ^R-CMD-check\.yaml$
 ^\.positai$
 ^\.claude$
+^dev$

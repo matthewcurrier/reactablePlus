@@ -257,30 +257,6 @@ config_table_server <- function(
 
     render_key <- shiny::reactiveVal(0L)
 
-    # ── Cell HTML cache ───────────────────────────────────────────────────
-    # A module-scoped environment used as a key→value store for memoised
-    # cell HTML strings. Lives for the lifetime of the module session so
-    # it persists across render_key increments.
-    #
-    # Cache keys encode everything that can affect a cell's HTML output:
-    # column id, row key, serialised cell value, gate-open state, and a
-    # digest of the settings list (gear toggles that affect content, e.g.
-    # showNCESId). When any of those change the key changes and a fresh
-    # string is computed and stored.
-    #
-    # The cache is invalidated wholesale on structural re-renders (source_data
-    # change, context switch, reset) by assigning a new environment. This is
-    # cheaper than iterating and removes stale entries for departed rows.
-    .cell_cache <- new.env(hash = TRUE, parent = emptyenv())
-
-    # Wholesale cache invalidation: replace with a fresh environment.
-    # Called before any render_key increment that represents a structural
-    # change (row set changed, context switch, reset) so departed-row
-    # entries don't accumulate and stale HTML is never served.
-    .invalidate_cell_cache <- function() {
-      .cell_cache <<- new.env(hash = TRUE, parent = emptyenv())
-    }
-
     # Seed from saved data (static mode only at init — dynamic mode
     # defers to the source_data observer which fires first).
     if (!is_dynamic && !is_appendable) {
@@ -317,28 +293,16 @@ config_table_server <- function(
       )
 
       # Selection observers
-      # Checkbox state is pushed to the client via rp_set_checkbox rather
-      # than a full re-render. The server still tracks .selected in rows()
-      # so get_data() and selected_ids() stay accurate, but the DOM update
-      # is a targeted in-place message — same pattern used by mutual
-      # exclusion clearing.
       if (isTRUE(config$selectable)) {
         purrr::walk(unwired, function(local_gk) {
           input_id <- paste0(".selected_", local_gk)
           shiny::observeEvent(
             input[[input_id]],
             {
-              new_checked <- isTRUE(input[[input_id]])
               rs <- rows()
-              rs[[local_gk]]$.selected <- new_checked
+              rs[[local_gk]]$.selected <- isTRUE(input[[input_id]])
               rows(rs)
-              session$sendCustomMessage(
-                "rp_set_checkbox",
-                list(
-                  input_id = ns(input_id),
-                  checked  = new_checked
-                )
-              )
+              render_key(render_key() + 1L)
             },
             ignoreInit = TRUE
           )
@@ -369,7 +333,6 @@ config_table_server <- function(
             effective_label_map(list())
             # Merge preserves departed rows' state
             rows(.merge_dynamic_rows(config, character(0), rows()))
-            .invalidate_cell_cache()
             render_key(render_key() + 1L)
             return(invisible(NULL))
           }
@@ -418,11 +381,11 @@ config_table_server <- function(
           }
 
           rows(merged)
+          .sync_store_cells(session, config, merged, new_keys)
 
           # Wire observers for any new keys
           .wire_new_keys(new_keys)
 
-          .invalidate_cell_cache()
           render_key(render_key() + 1L)
         },
         ignoreNULL = FALSE,
@@ -436,16 +399,17 @@ config_table_server <- function(
         data_r(),
         {
           saved_data <- data_r()
-          if (
+          new_rows <- if (
             is.null(saved_data) ||
               !is.data.frame(saved_data) ||
               nrow(saved_data) == 0L
           ) {
-            rows(.build_empty_rows(config))
+            .build_empty_rows(config)
           } else {
-            rows(.rows_from_saved(config, saved_data))
+            .rows_from_saved(config, saved_data)
           }
-          .invalidate_cell_cache()
+          rows(new_rows)
+          .sync_store_cells(session, config, new_rows, effective_keys())
           render_key(render_key() + 1L)
         },
         ignoreInit = TRUE,
@@ -487,7 +451,7 @@ config_table_server <- function(
           })
 
           rows(rs)
-          .invalidate_cell_cache()
+          .sync_store_cells(session, config, rs, current_keys)
           render_key(render_key() + 1L)
         },
         ignoreInit = TRUE,
@@ -530,7 +494,7 @@ config_table_server <- function(
           }
 
           rows(new_rows)
-          .invalidate_cell_cache()
+          .sync_store_cells(session, config, new_rows, current_keys)
           render_key(render_key() + 1L)
         },
         ignoreNULL = TRUE,
@@ -619,6 +583,21 @@ config_table_server <- function(
       }
     }
 
+    # ── Store-backed primitive columns ───────────────────────────────────
+    # One per-column observer each, wired once. It reads the aggregated
+    # *_extra store input (keyed by row key), so it covers rows added later
+    # in dynamic/appendable mode without re-wiring.
+    purrr::walk(
+      Filter(function(cs) cs$type %in% .STORE_TYPES, config$columns),
+      .wire_store_column_observer,
+      input = input,
+      rows = rows,
+      render_key = render_key,
+      config = config,
+      session = session,
+      effective_keys = effective_keys
+    )
+
     # ── Year input observer ──────────────────────────────────────────────
     if (!is.null(config$year_col)) {
       shiny::observeEvent(input$year_change, {
@@ -647,24 +626,37 @@ config_table_server <- function(
     fd <- config$interactions$fill_down
     if (!is.null(fd)) {
       fd_input_name <- fd$input_name %||% paste0(fd$column, "_fill_down")
+      fd_target_cs <- Filter(function(c) c$id == fd$column, config$columns)[[1]]
+      fd_target_is_store <- fd_target_cs$type %in% .STORE_TYPES
       shiny::observeEvent(input[[fd_input_name]], {
         msg <- input[[fd_input_name]]
         if (is.null(msg)) {
           return()
         }
 
-        from_grade <- msg$from_grade
-        school <- msg$school
-        if (is.null(school) || !is.list(school)) {
+        # `from_grade` is the picker payload's field; store fill links send
+        # `from_row`. The fill value comes from the message (picker) or is
+        # read from server state (store columns).
+        from_key <- msg$from_row %||% msg$from_grade
+        if (is.null(from_key)) {
           return()
         }
 
-        from_idx <- match(from_grade, effective_keys())
+        from_idx <- match(from_key, effective_keys())
         if (is.na(from_idx)) {
           return()
         }
 
         rs <- rows()
+
+        fill_value <- msg$value %||% msg$school
+        if (is.null(fill_value)) {
+          fill_value <- rs[[from_key]][[fd$column]]
+        }
+        if (.is_cell_empty(fd_target_cs, fill_value)) {
+          return()
+        }
+
         me_cols <- purrr::map_chr(
           config$interactions$mutual_exclusion %||% list(),
           "when_on"
@@ -689,7 +681,7 @@ config_table_server <- function(
           if (!is.list(r)) {
             next
           }
-          if (!is.null(r[[fd$column]])) {
+          if (!.is_cell_empty(fd_target_cs, r[[fd$column]])) {
             next
           }
 
@@ -700,24 +692,40 @@ config_table_server <- function(
 
           # Range check — delegate to caller-supplied predicate
           if (!is.null(fd$range_check_fn)) {
-            if (!fd$range_check_fn(gk, school)) next
+            if (!fd$range_check_fn(gk, fill_value)) next
           }
 
-          rs[[gk]][[fd$column]] <- school
+          rs[[gk]][[fd$column]] <- fill_value
           filled_keys <- c(filled_keys, gk)
         }
 
         rows(rs)
 
-        # Push the new value into each filled picker's JS state. The
-        # picker's receiveMessage handler will call setValue + render(),
-        # bringing the visible DOM in sync with the server state.
-        purrr::walk(filled_keys, function(gk) {
-          session$sendInputMessage(
-            paste0(fd$column, "_", gk),
-            list(value = school)
-          )
-        })
+        # Push the new value into each filled cell so the DOM reflects it.
+        # Store columns go through the *_extra store; pickers/other widgets
+        # receive a setValue message.
+        if (fd_target_is_store) {
+          if (length(filled_keys) > 0L) {
+            update_extra(
+              session,
+              fd$column,
+              stats::setNames(
+                lapply(filled_keys, function(gk) {
+                  .store_display_value(fd_target_cs, rs[[gk]])
+                }),
+                filled_keys
+              ),
+              ns = session$ns("")
+            )
+          }
+        } else {
+          purrr::walk(filled_keys, function(gk) {
+            session$sendInputMessage(
+              paste0(fd$column, "_", gk),
+              list(value = fill_value)
+            )
+          })
+        }
 
         # Update displacement + row class for filled rows (in case
         # fill-down's effect flips any mutual exclusion or row class).
@@ -799,7 +807,6 @@ config_table_server <- function(
         ))
 
         .wire_new_keys(new_key)
-        .invalidate_cell_cache()
         render_key(render_key() + 1L)
       })
     }
@@ -836,7 +843,6 @@ config_table_server <- function(
           new_keys
         ))
 
-        .invalidate_cell_cache()
         render_key(render_key() + 1L)
       })
     }
@@ -880,8 +886,8 @@ config_table_server <- function(
             current_keys
           )
           rows(empty)
+          .sync_store_cells(session, config, empty, current_keys)
         }
-        .invalidate_cell_cache()
         render_key(render_key() + 1L)
       })
     }
@@ -916,8 +922,7 @@ config_table_server <- function(
         tbl,
         effective_keys = current_keys,
         effective_labels = current_labels,
-        source_snapshot = src_snap,
-        cell_cache = .cell_cache
+        source_snapshot = src_snap
       )
 
       wrapper_class <- if (isTRUE(settings$compactRows)) {
@@ -969,7 +974,10 @@ config_table_server <- function(
         }
       )
 
-      bindPickersOnRender(rt)
+      # Pickers bind via the popover observer; primitive cells now render
+      # as store-backed *_extra inputs, so the table also needs the extras
+      # reconcile hook (seed the store + keep edits across repaints).
+      bindExtrasOnRender(bindPickersOnRender(rt))
     })
 
     # ── Return value ─────────────────────────────────────────────────────
@@ -1194,6 +1202,158 @@ config_table_server <- function(
 #' targeted messages). Gear toggles and fill-down still increment
 #' `render_key` from their own observers.
 #'
+#' Push current store-column values for `keys` into the *_extra store.
+#'
+#' Used after any server-initiated bulk change to row state (reset,
+#' context switch, dynamic merge) so the client store reflects the new
+#' authoritative values instead of being overruled by reconcile.
+#' @noRd
+.sync_store_cells <- function(session, config, rs, keys) {
+  if (length(keys) == 0L) {
+    return(invisible(NULL))
+  }
+  store_cols <- Filter(function(cs) cs$type %in% .STORE_TYPES, config$columns)
+  purrr::walk(store_cols, function(cs) {
+    vals <- stats::setNames(
+      lapply(keys, function(gk) .store_display_value(cs, rs[[gk]])),
+      keys
+    )
+    update_extra(session, cs$id, vals, ns = session$ns(""))
+  })
+  invisible(NULL)
+}
+
+
+#' Wire a single per-column observer for a store-backed primitive column.
+#'
+#' Replaces the per-cell observers for store columns. Reads the aggregated
+#' store input (`input[[cs$id]]`, a named list keyed by row key), diffs it
+#' against `rows()`, applies validation + mutual exclusion, and sends the
+#' same in-place displacement / row-class messages as the per-cell path.
+#' @noRd
+.wire_store_column_observer <- function(
+  cs,
+  input,
+  rows,
+  render_key,
+  config,
+  session,
+  effective_keys
+) {
+  ns <- session$ns
+  me_rules_triggered_by_this <- Filter(
+    function(rule) rule$when_on == cs$id,
+    config$interactions$mutual_exclusion %||% list()
+  )
+  all_me_rules <- config$interactions$mutual_exclusion %||% list()
+  store_type_ids <- vapply(
+    Filter(function(c) c$type %in% .STORE_TYPES, config$columns),
+    function(c) c$id,
+    character(1)
+  )
+
+  shiny::observeEvent(
+    input[[cs$id]],
+    {
+      vals <- input[[cs$id]]
+      if (is.null(vals)) {
+        return(invisible(NULL))
+      }
+      keys <- effective_keys()
+      rs <- rows()
+      changed <- character(0)
+      cleared <- list() # each: list(gk=, col=)
+
+      for (gk in names(vals)) {
+        if (!gk %in% keys) {
+          next
+        }
+        raw <- vals[[gk]]
+        new_val <- if (!is.null(cs$validate_fn)) {
+          cs$validate_fn(raw)
+        } else {
+          .default_validate(raw, cs$type)
+        }
+        old_val <- rs[[gk]][[cs$id]]
+        if (identical(new_val, old_val)) {
+          next
+        }
+        rs[[gk]][[cs$id]] <- new_val
+        changed <- c(changed, gk)
+
+        if (!is.null(new_val) && is.null(old_val)) {
+          for (rule in me_rules_triggered_by_this) {
+            if (!is.null(rs[[gk]][[rule$clears]])) {
+              rs[[gk]][[rule$clears]] <- NULL
+              cleared[[length(cleared) + 1L]] <- list(gk = gk, col = rule$clears)
+            }
+          }
+        }
+      }
+
+      if (length(changed) == 0L) {
+        return(invisible(NULL))
+      }
+      rows(rs)
+
+      # Push cleared siblings to the appropriate channel.
+      purrr::walk(cleared, function(cp) {
+        if (cp$col %in% store_type_ids) {
+          target_cs <- Filter(function(c) c$id == cp$col, config$columns)[[1]]
+          update_extra(
+            session,
+            cp$col,
+            stats::setNames(
+              list(.store_display_value(target_cs, rs[[cp$gk]])),
+              cp$gk
+            ),
+            ns = session$ns("")
+          )
+        } else {
+          session$sendInputMessage(
+            paste0(cp$col, "_", cp$gk),
+            list(value = NULL)
+          )
+        }
+      })
+
+      # In-place displacement + row-class updates for each changed row.
+      purrr::walk(changed, function(gk) {
+        new_row <- rs[[gk]]
+        purrr::walk(all_me_rules, function(rule) {
+          session$sendCustomMessage(
+            "rp_set_displaced",
+            list(
+              cell_key = ns(paste0(rule$clears, "-", gk)),
+              displaced = !is.null(new_row[[rule$when_on]])
+            )
+          )
+        })
+        if (!is.null(config$row_class_fn)) {
+          new_class <- tryCatch(
+            config$row_class_fn(gk, new_row),
+            error = function(e) NULL
+          )
+          session$sendCustomMessage(
+            "rp_set_row_class",
+            list(
+              row_key = ns(gk),
+              new_class = paste(as.character(new_class %||% ""), collapse = " ")
+            )
+          )
+        }
+      })
+
+      if (isTRUE(cs$triggers_rerender)) {
+        render_key(render_key() + 1L)
+      }
+    },
+    ignoreNULL = FALSE,
+    ignoreInit = TRUE
+  )
+}
+
+
 #' @noRd
 .wire_column_observers <- function(
   cs,
@@ -1205,6 +1365,13 @@ config_table_server <- function(
   session
 ) {
   ns <- session$ns
+
+  # Store-backed primitive columns are handled by a single per-column
+  # observer (.wire_store_column_observer) that reads the aggregated store
+  # input, so they get no per-cell observers here.
+  if (cs$type %in% .STORE_TYPES) {
+    return(invisible(NULL))
+  }
 
   # Pre-compute the mutual-exclusion rules where this column is the
   # trigger (`when_on`). When this column changes, those rules dictate
@@ -1290,12 +1457,29 @@ config_table_server <- function(
 
         new_row <- rs[[local_gk]]
 
-        # 1. Clear cleared widgets
+        # 1. Clear cleared widgets. Store-backed targets are pushed into
+        #    the *_extra store; pickers/other widgets get sendInputMessage.
         purrr::walk(cleared_cols, function(cleared_col_id) {
-          session$sendInputMessage(
-            paste0(cleared_col_id, "_", local_gk),
-            list(value = NULL)
-          )
+          target_cs <- Filter(
+            function(c) c$id == cleared_col_id,
+            config$columns
+          )[[1]]
+          if (target_cs$type %in% .STORE_TYPES) {
+            update_extra(
+              session,
+              cleared_col_id,
+              stats::setNames(
+                list(.store_display_value(target_cs, new_row)),
+                local_gk
+              ),
+              ns = session$ns("")
+            )
+          } else {
+            session$sendInputMessage(
+              paste0(cleared_col_id, "_", local_gk),
+              list(value = NULL)
+            )
+          }
         })
 
         # 2. Update displacement state on every cell that has a rule

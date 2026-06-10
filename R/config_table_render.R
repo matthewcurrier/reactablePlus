@@ -13,8 +13,6 @@
 # current_rows, settings, and return HTML or colDef objects.
 # =============================================================================
 
-#' @importFrom digest digest
-
 # ── Click-to-select helper ───────────────────────────────────────────────────
 # Inline JS that finds the selection checkbox in the same row and
 # toggles it. Used by badge and display column cells when
@@ -105,6 +103,93 @@
     custom = val,
     val
   )
+}
+
+
+# Popover picker types that also report through the per-column store. They
+# carry a structured-list value (not a scalar) and render via .store_wrap()
+# around the picker widget, with data-rp-type="picker" so the JS type
+# registry (reactable-extras.js) reads/writes them via the popover instance.
+.PICKER_STORE_TYPES <- c(
+  "search_picker", "attendance_picker", "homeschool_picker"
+)
+
+# Widget types rendered as store-backed *_extra cells: the value flows
+# back through the per-column reactable-extras store rather than a per-cell
+# Shiny input. Keep in sync with the primitive renderers in
+# .build_widget_coldef() and the cell bricks in R/cell-extras.R.
+.STORE_TYPES <- c(
+  "dropdown", "numeric", "date", "checkbox", "toggle", "text", "notes_input",
+  .PICKER_STORE_TYPES
+)
+
+
+#' The value the *_extra store/DOM expects for a column's current state.
+#'
+#' Mirrors each primitive renderer's initial-value logic so the server can
+#' push authoritative values into the store (via [update_extra()]) that match
+#' what a fresh render would show.
+#' @noRd
+.store_display_value <- function(cs, row_state) {
+  v <- if (is.list(row_state)) row_state[[cs$id]] else NULL
+  # Pickers carry a structured list (or NULL when off). The JS picker
+  # write handler applies it via the popover's setValue as-is, so pass it
+  # through untouched — update_extra() serializes the list to the client.
+  if (cs$type %in% .PICKER_STORE_TYPES) {
+    return(v)
+  }
+  empty <- is.null(v) || (length(v) == 1L && is.na(v))
+  switch(
+    cs$type,
+    numeric = if (empty) (cs$options$min %||% 0) else v,
+    checkbox = isTRUE(v),
+    toggle = isTRUE(v),
+    date = if (empty) "" else format(as.Date(v), "%Y-%m-%d"),
+    dropdown = if (empty) "" else as.character(v)[1L],
+    # text, notes_input
+    if (empty) "" else as.character(v)[1L]
+  )
+}
+
+
+#' Is a cell currently "empty" (eligible to receive a fill-down)?
+#'
+#' A cell is empty when it is NULL or holds the column's `empty_value`
+#' (or an NA scalar). Picker columns use `empty_value = NULL`, so this
+#' reduces to the historical `is.null()` check for them.
+#' @noRd
+.is_cell_empty <- function(cs, v) {
+  if (is.null(v)) {
+    return(TRUE)
+  }
+  if (length(v) == 1L && is.na(v)) {
+    return(TRUE)
+  }
+  !is.null(cs$empty_value) && identical(v, cs$empty_value)
+}
+
+
+#' Wrap a store cell's HTML with a "fill down" link.
+#'
+#' Used for the column configured as the `fill_down` target so store-backed
+#' primitives get the same cascade affordance pickers have. The link sends
+#' `{from_row}` to the fill-down input; the server reads the source value
+#' from its own state and cascades it. Quotes are written as numeric HTML
+#' entities so the inline handler survives reactable's HTML rendering.
+#' @noRd
+.with_fill_link <- function(cell_html, fd, gk, ns) {
+  fd_input_name <- fd$input_name %||% paste0(fd$column, "_fill_down")
+  input_id <- ns(fd_input_name)
+  link <- sprintf(
+    paste0(
+      "<a href=\"#\" class=\"rp-fill-down\" title=\"Fill value down\" ",
+      "onclick=\"Shiny.setInputValue(&#39;%s&#39;, {from_row: &#39;%s&#39;}, ",
+      "{priority: &#39;event&#39;}); event.preventDefault();\">&#8615;</a>"
+    ),
+    input_id,
+    gk
+  )
+  paste0('<span class="rp-fill-wrap">', cell_html, link, "</span>")
 }
 
 
@@ -332,50 +417,11 @@
 
 
 #' Build reactable colDef list from config.
-#' Build a cache key for a single widget cell.
 #'
-#' Encodes every input that affects the HTML output of a widget cell:
-#' column id, row key, serialised cell value (via [digest::digest]),
-#' gate-open state, and a digest of the settings list (so gear-toggle
-#' changes that affect content, e.g. showNCESId, produce a new key).
-#'
-#' Mutual-exclusion displacement state is intentionally excluded from the
-#' key. Displacement is managed in-place by the JS `rp_set_displaced`
-#' handler and does not change the underlying widget HTML — caching on
-#' displacement state would cause unnecessary cache misses.
-#'
-#' @param col_id    Character. Column identifier.
-#' @param row_key   Character. Row key.
-#' @param cell_val  Any. Current cell value from `row[[col_id]]`.
-#' @param gate_open Logical. Whether the gate for this cell is open.
-#' @param settings  List. Current gear settings (may affect rendered HTML).
-#' @return Character. A cache key suitable for use as an environment name.
-#' @noRd
-.cell_cache_key <- function(col_id, row_key, cell_val, gate_open, settings) {
-  paste0(
-    col_id, ":",
-    row_key, ":",
-    digest::digest(cell_val, algo = "xxhash32"), ":",
-    if (gate_open) "1" else "0", ":",
-    digest::digest(settings,  algo = "xxhash32")
-  )
-}
-
-
-#' Build a colDef list for all columns in a config_table.
-#'
-#' @param config       A `table_config` object.
-#' @param ns           Shiny namespace function.
-#' @param current_rows Named list of current row states.
-#' @param settings     List of current gear settings.
-#' @param tbl          Data frame skeleton produced by `.build_table_df()`.
 #' @param effective_keys Optional character vector of current row keys.
 #' @param effective_labels Optional character vector of current labels.
 #' @param source_snapshot Optional data frame. The current
 #'   `source_data()` snapshot, used for display column rendering.
-#' @param cell_cache   An environment used as a key→value store for
-#'   memoised widget cell HTML strings. Pass `NULL` to disable caching
-#'   (used in tests). Default `NULL`.
 #'
 #' @noRd
 .build_col_defs <- function(
@@ -386,8 +432,7 @@
   tbl,
   effective_keys = NULL,
   effective_labels = NULL,
-  source_snapshot = NULL,
-  cell_cache = NULL
+  source_snapshot = NULL
 ) {
   col_defs <- list()
 
@@ -541,8 +586,7 @@
   # the reactable definition. This lets us toggle column visibility
   # without a full re-render.
   widget_defs <- purrr::map(config$columns, function(cs) {
-    .build_widget_coldef(cs, ns, current_rows, settings, tbl, config,
-                         cell_cache = cell_cache)
+    .build_widget_coldef(cs, ns, current_rows, settings, tbl, config)
   }) |>
     purrr::set_names(purrr::map_chr(config$columns, "id"))
 
@@ -626,10 +670,42 @@
 }
 
 
+#' Wrap a picker cell so it reports through the per-column *_extra store.
+#'
+#' Emits an `.rp-extra` div carrying the store coordinates around the
+#' picker's (already mutual-exclusion-wrapped) HTML:
+#'
+#'   <div class="rp-extra" data-input-id="{ns(col)}" data-row="{gk}"
+#'        data-rp-type="picker">{inner_html}</div>
+#'
+#' The JS "picker" type (reactable-extras.js) reads/writes the value via the
+#' inner picker's popover instance, so the whole column collects under one
+#' Shiny input (`input[[col]]`) keyed by row key, exactly like the primitive
+#' `*_extra` cells. The picker binding still lives inside and renders the
+#' widget; this wrapper only adds the store plumbing.
+#'
+#' @param inner_html Character. The picker cell HTML (typically the output
+#'   of `.wrap_cell()`).
+#' @param input_id Character. Namespaced column input id, e.g. `ns(cs$id)`.
+#' @param row Character. The row key placed in `data-row`.
+#' @return Character HTML for the store-wrapped picker cell.
+#' @noRd
+.store_wrap <- function(inner_html, input_id, row) {
+  sprintf(
+    paste0(
+      '<div class="rp-extra" data-input-id="%s" data-row="%s" ',
+      'data-rp-type="picker">%s</div>'
+    ),
+    htmltools::htmlEscape(input_id, attribute = TRUE),
+    htmltools::htmlEscape(row, attribute = TRUE),
+    inner_html
+  )
+}
+
+
 #' Build a single colDef for a widget column.
 #' @noRd
-.build_widget_coldef <- function(cs, ns, current_rows, settings, tbl, config,
-                                 cell_cache = NULL) {
+.build_widget_coldef <- function(cs, ns, current_rows, settings, tbl, config) {
   col_def_args <- list(
     name = cs$label,
     html = TRUE
@@ -648,132 +724,126 @@
     config$interactions$mutual_exclusion %||% list()
   )
 
-  # ── Cache helper ──────────────────────────────────────────────────────
-  # Returns a cached HTML string on a hit, or evaluates `expr` and stores
-  # the result on a miss. When cell_cache is NULL (tests / callers that
-  # opt-out), the expression is always evaluated fresh.
-  .cached <- function(key, expr) {
-    if (is.null(cell_cache)) return(expr)
-    cached_val <- tryCatch(get(key, envir = cell_cache, inherits = FALSE),
-                           error = function(e) NULL)
-    if (!is.null(cached_val)) return(cached_val)
-    result <- expr
-    assign(key, result, envir = cell_cache)
-    result
-  }
-
   col_def_args$cell <- switch(
     cs$type,
 
     search_picker = function(value, index) {
       gk <- tbl$.row_key[index]
       row <- current_rows[[gk]]
-      if (!is.list(row)) row <- list()
+      if (!is.list(row)) {
+        row <- list()
+      }
 
       opts <- cs$options
-      gate_open <- .is_gate_open(cs$gate, row)
-      cache_key <- .cell_cache_key(cs$id, gk, row[[cs$id]], gate_open, settings)
-
-      .cached(cache_key, {
-        widget_html <- as.character(searchPickerInput(
-          inputId = ns(paste0(cs$id, "_", gk)),
-          value = row[[cs$id]],
-          show_nces_id = isTRUE(
-            settings$showNCESId %||% opts$show_nces_id %||% TRUE
-          ),
-          grade_label = config$label_map[[gk]],
-          grade_key = gk,
-          ns = ns(""),
-          trigger_label = opts$trigger_label %||% "+ Pick school",
-          popover_title = opts$popover_title %||% "Find school",
-          search_placeholder = opts$search_placeholder,
-          empty_hint = opts$empty_hint,
-          no_match_hint = opts$no_match_hint,
-          show_fill_down = opts$show_fill_down %||% TRUE
-        ))
+      widget_html <- as.character(searchPickerInput(
+        inputId = ns(paste0(cs$id, "_", gk)),
+        value = row[[cs$id]],
+        show_nces_id = isTRUE(
+          settings$showNCESId %||% opts$show_nces_id %||% TRUE
+        ),
+        grade_label = config$label_map[[gk]],
+        grade_key = gk,
+        ns = ns(""),
+        trigger_label = opts$trigger_label %||% "+ Pick school",
+        popover_title = opts$popover_title %||% "Find school",
+        search_placeholder = opts$search_placeholder,
+        empty_hint = opts$empty_hint,
+        no_match_hint = opts$no_match_hint,
+        show_fill_down = opts$show_fill_down %||% TRUE
+      ))
+      .store_wrap(
         .wrap_cell(
           widget_html,
           me_rules,
           row,
           ns_cell_key = ns(paste0(cs$id, "-", gk))
-        )
-      })
+        ),
+        input_id = ns(cs$id),
+        row = gk
+      )
     },
 
     attendance_picker = function(value, index) {
       gk <- tbl$.row_key[index]
       row <- current_rows[[gk]]
-      if (!is.list(row)) row <- list()
+      if (!is.list(row)) {
+        row <- list()
+      }
 
       opts <- cs$options
-      gate_open <- .is_gate_open(cs$gate, row)
-      cache_key <- .cell_cache_key(cs$id, gk, row[[cs$id]], gate_open, settings)
-
-      .cached(cache_key, {
-        widget_html <- as.character(attendancePickerInput(
-          inputId = ns(paste0(cs$id, "_", gk)),
-          value = row[[cs$id]],
-          grade_label = config$label_map[[gk]],
-          sections = opts$sections,
-          trigger_label = opts$trigger_label,
-          popover_title = opts$popover_title,
-          show_notes = opts$show_notes %||% TRUE,
-          notes_placeholder = opts$notes_placeholder
-        ))
+      widget_html <- as.character(attendancePickerInput(
+        inputId = ns(paste0(cs$id, "_", gk)),
+        value = row[[cs$id]],
+        grade_label = config$label_map[[gk]],
+        sections = opts$sections,
+        trigger_label = opts$trigger_label,
+        popover_title = opts$popover_title,
+        show_notes = opts$show_notes %||% TRUE,
+        notes_placeholder = opts$notes_placeholder
+      ))
+      .store_wrap(
         .wrap_cell(
           widget_html,
           me_rules,
           row,
           ns_cell_key = ns(paste0(cs$id, "-", gk))
-        )
-      })
+        ),
+        input_id = ns(cs$id),
+        row = gk
+      )
     },
 
     homeschool_picker = function(value, index) {
       gk <- tbl$.row_key[index]
       row <- current_rows[[gk]]
-      if (!is.list(row)) row <- list()
+      if (!is.list(row)) {
+        row <- list()
+      }
 
       opts <- cs$options
-      gate_open <- .is_gate_open(cs$gate, row)
-      cache_key <- .cell_cache_key(cs$id, gk, row[[cs$id]], gate_open, settings)
-
-      .cached(cache_key, {
-        widget_html <- as.character(homeschoolPickerInput(
-          inputId = ns(paste0(cs$id, "_", gk)),
-          value = row[[cs$id]],
-          grade_label = config$label_map[[gk]],
-          grade_key = gk,
-          ns = ns(""),
-          providers = opts$providers,
-          provider_label = opts$provider_label,
-          curriculum_label = opts$curriculum_label,
-          curriculum_placeholder = opts$curriculum_placeholder,
-          show_curriculum = opts$show_curriculum %||% TRUE,
-          show_notes = opts$show_notes %||% TRUE,
-          notes_placeholder = opts$notes_placeholder,
-          trigger_label = opts$trigger_label,
-          trigger_sub_label = opts$trigger_sub_label,
-          popover_title = opts$popover_title,
-          popover_title_sub = opts$popover_title_sub,
-          filled_pill_label = opts$filled_pill_label,
-          clear_label = opts$clear_label
-        ))
+      widget_html <- as.character(homeschoolPickerInput(
+        inputId = ns(paste0(cs$id, "_", gk)),
+        value = row[[cs$id]],
+        grade_label = config$label_map[[gk]],
+        grade_key = gk,
+        ns = ns(""),
+        providers = opts$providers,
+        provider_label = opts$provider_label,
+        curriculum_label = opts$curriculum_label,
+        curriculum_placeholder = opts$curriculum_placeholder,
+        show_curriculum = opts$show_curriculum %||% TRUE,
+        show_notes = opts$show_notes %||% TRUE,
+        notes_placeholder = opts$notes_placeholder,
+        trigger_label = opts$trigger_label,
+        trigger_sub_label = opts$trigger_sub_label,
+        popover_title = opts$popover_title,
+        popover_title_sub = opts$popover_title_sub,
+        filled_pill_label = opts$filled_pill_label,
+        clear_label = opts$clear_label
+      ))
+      .store_wrap(
         .wrap_cell(
           widget_html,
           me_rules,
           row,
           ns_cell_key = ns(paste0(cs$id, "-", gk))
-        )
-      })
+        ),
+        input_id = ns(cs$id),
+        row = gk
+      )
     },
 
     notes_input = function(value, index) {
       gk <- tbl$.row_key[index]
       row <- current_rows[[gk]]
-      if (!is.list(row)) row <- list()
+      if (!is.list(row)) {
+        row <- list()
+      }
 
       opts <- cs$options
+      default_placeholder <- opts$placeholder %||% "Optional"
+
+      # Dynamic placeholder from mutual exclusion
       me_active <- purrr::some(
         config$interactions$mutual_exclusion %||% list(),
         ~ !is.null(row[[.x$when_on]])
@@ -781,20 +851,19 @@
       placeholder <- if (me_active && !is.null(opts$alt_placeholder)) {
         opts$alt_placeholder
       } else {
-        opts$placeholder %||% "Optional"
+        default_placeholder
       }
-      note_val <- row[[cs$id]] %||% ""
 
-      gate_open <- .is_gate_open(cs$gate, row)
-      cache_key <- .cell_cache_key(cs$id, gk, note_val, gate_open, settings)
+      note_val <- row[[cs$id]]
+      if (is.null(note_val)) {
+        note_val <- ""
+      }
 
-      .cached(cache_key, {
-        as.character(notesInput(
-          inputId = ns(paste0(cs$id, "_", gk)),
-          value = note_val,
-          placeholder = placeholder
-        ))
-      })
+      .extra_value_cell(
+        ns(cs$id), "text", "text", note_val, gk,
+        attrs = list(placeholder = placeholder),
+        class = "cell-input"
+      )
     },
 
     custom = function(value, index) {
@@ -809,17 +878,18 @@
 
     # ── Primitive input types ──────────────────────────────────────────────
 
+    # Primitive inputs render as store-backed *_extra cells: the cell HTML
+    # carries data-input-id = ns(col_id) and data-row = row key, and the
+    # shared reactable-extras.js store collects the whole column under one
+    # Shiny input. See R/cell-extras.R for the bricks and the value contract.
+
     dropdown = function(value, index) {
       gk <- tbl$.row_key[index]
       row <- current_rows[[gk]]
       current_val <- if (is.list(row)) row[[cs$id]] else NULL
-      has_value <- !is.null(current_val) && !is.na(current_val)
       locked <- !.is_gate_open(cs$gate, if (is.list(row)) row else list())
 
       opts <- cs$options
-      input_id <- ns(paste0(cs$id, "_", gk))
-      la <- .locked_attrs(locked, "width: 100%; padding: 4px;")
-
       # Resolve choices: dynamic choices_fn takes precedence over static
       resolved_choices <- if (!is.null(opts$choices_fn) && is.list(row)) {
         tryCatch(
@@ -830,34 +900,11 @@
         opts$choices %||% list()
       }
 
-      placeholder_tag <- htmltools::tags$option(
-        value = "",
-        disabled = "disabled",
-        selected = if (!has_value) "selected" else NULL,
-        opts$placeholder %||% "-- Select --"
+      .extra_select_cell(
+        ns(cs$id), resolved_choices, current_val, gk,
+        placeholder = opts$placeholder %||% "-- Select --",
+        attrs = .locked_attrs(locked, "width: 100%; padding: 4px;")
       )
-
-      choice_tags <- purrr::map(resolved_choices, function(choice) {
-        is_match <- has_value &&
-          identical(as.character(current_val), as.character(choice$value))
-        htmltools::tags$option(
-          value = choice$value,
-          selected = if (is_match) "selected" else NULL,
-          choice$label
-        )
-      })
-
-      as.character(htmltools::tags$select(
-        id = input_id,
-        onchange = sprintf(
-          "Shiny.setInputValue('%s', this.value, {priority: 'event'});",
-          input_id
-        ),
-        disabled = la$disabled,
-        style = la$style,
-        placeholder_tag,
-        choice_tags
-      ))
     },
 
     numeric = function(value, index) {
@@ -872,23 +919,14 @@
       } else {
         current_val
       }
-      input_id <- ns(paste0(cs$id, "_", gk))
-      la <- .locked_attrs(locked, "width: 100%; padding: 4px;")
 
-      as.character(htmltools::tags$input(
-        id = input_id,
-        type = "number",
-        value = initial,
-        min = opts$min,
-        max = opts$max,
-        step = opts$step,
-        disabled = la$disabled,
-        oninput = sprintf(
-          "Shiny.setInputValue('%s', parseFloat(this.value), {priority: 'event'});",
-          input_id
-        ),
-        style = la$style
-      ))
+      .extra_value_cell(
+        ns(cs$id), "numeric", "number", initial, gk,
+        attrs = c(
+          purrr::compact(list(min = opts$min, max = opts$max, step = opts$step)),
+          .locked_attrs(locked, "width: 100%; padding: 4px;")
+        )
+      )
     },
 
     date = function(value, index) {
@@ -903,22 +941,14 @@
       } else {
         format(as.Date(current_val), "%Y-%m-%d")
       }
-      input_id <- ns(paste0(cs$id, "_", gk))
-      la <- .locked_attrs(locked, "width: 100%; padding: 4px;")
 
-      as.character(htmltools::tags$input(
-        id = input_id,
-        type = "date",
-        value = initial,
-        min = opts$min_date,
-        max = opts$max_date,
-        disabled = la$disabled,
-        onchange = sprintf(
-          "Shiny.setInputValue('%s', this.value, {priority: 'event'});",
-          input_id
-        ),
-        style = la$style
-      ))
+      .extra_value_cell(
+        ns(cs$id), "date", "date", initial, gk,
+        attrs = c(
+          purrr::compact(list(min = opts$min_date, max = opts$max_date)),
+          .locked_attrs(locked, "width: 100%; padding: 4px;")
+        )
+      )
     },
 
     checkbox = function(value, index) {
@@ -927,20 +957,10 @@
       is_checked <- isTRUE(if (is.list(row)) row[[cs$id]] else FALSE)
       locked <- !.is_gate_open(cs$gate, if (is.list(row)) row else list())
 
-      input_id <- ns(paste0(cs$id, "_", gk))
-      la <- .locked_attrs(locked, "width: 20px; height: 20px;")
-
-      as.character(htmltools::tags$input(
-        id = input_id,
-        type = "checkbox",
-        checked = if (is_checked) "checked" else NULL,
-        disabled = la$disabled,
-        onchange = sprintf(
-          "Shiny.setInputValue('%s', this.checked, {priority: 'event'});",
-          input_id
-        ),
-        style = la$style
-      ))
+      .extra_checkbox_cell(
+        ns(cs$id), is_checked, gk,
+        attrs = .locked_attrs(locked, "width: 20px; height: 20px;")
+      )
     },
 
     toggle = function(value, index) {
@@ -949,55 +969,16 @@
       is_on <- isTRUE(if (is.list(row)) row[[cs$id]] else FALSE)
       locked <- !.is_gate_open(cs$gate, if (is.list(row)) row else list())
 
-      input_id <- ns(paste0(cs$id, "_", gk))
-      state_id <- input_id
-      btn_id <- paste0(input_id, "_btn")
-
-      btn_style <- paste0(
-        "padding: 3px 12px; border-radius: 12px; border: none; ",
-        "background-color: ",
-        if (is_on) "#28a745" else "#6c757d",
-        "; ",
-        "color: white; font-size: 0.85em; ",
-        if (locked) {
-          "opacity: 0.4; cursor: not-allowed; pointer-events: none;"
-        } else {
-          "cursor: pointer;"
-        }
-      )
-
-      as.character(htmltools::tagList(
-        htmltools::tags$input(
-          id = state_id,
-          type = "hidden",
-          value = tolower(as.character(is_on))
-        ),
-        htmltools::tags$button(
-          id = btn_id,
-          type = "button",
-          disabled = if (locked) "disabled" else NULL,
-          style = btn_style,
-          onclick = if (!locked) {
-            sprintf(
-              "(function() {
-               var s = document.getElementById('%s');
-               var b = document.getElementById('%s');
-               var newVal = s.value !== 'true';
-               s.value = newVal;
-               b.textContent = newVal ? 'On' : 'Off';
-               b.style.backgroundColor = newVal ? '#28a745' : '#6c757d';
-               Shiny.setInputValue('%s', newVal, {priority: 'event'});
-             })();",
-              state_id,
-              btn_id,
-              input_id
-            )
-          } else {
-            NULL
-          },
-          if (is_on) "On" else "Off"
+      lock_attrs <- if (locked) {
+        list(
+          disabled = "disabled",
+          style = "opacity: 0.4; cursor: not-allowed; pointer-events: none;"
         )
-      ))
+      } else {
+        list()
+      }
+
+      .extra_toggle_cell(ns(cs$id), is_on, gk, attrs = lock_attrs)
     },
 
     text = function(value, index) {
@@ -1012,27 +993,39 @@
       } else {
         as.character(current_val)
       }
-      input_id <- ns(paste0(cs$id, "_", gk))
-      la <- .locked_attrs(locked, "width: 100%; padding: 4px;")
 
-      as.character(htmltools::tags$input(
-        id = input_id,
-        type = "text",
-        value = initial,
-        maxlength = opts$max_chars,
-        placeholder = opts$placeholder,
-        disabled = la$disabled,
-        oninput = sprintf(
-          "Shiny.setInputValue('%s', this.value, {priority: 'event'});",
-          input_id
-        ),
-        style = la$style
-      ))
+      .extra_value_cell(
+        ns(cs$id), "text", "text", initial, gk,
+        attrs = c(
+          purrr::compact(list(
+            maxlength = opts$max_chars,
+            placeholder = opts$placeholder
+          )),
+          .locked_attrs(locked, "width: 100%; padding: 4px;")
+        )
+      )
     },
 
     # Fallback
     function(value, index) as.character(value)
   )
+
+  # Fill-down affordance: when this store-backed column is the fill_down
+  # target, append a "fill down" link to each cell (pickers render their
+  # own link inside the popover, so they are excluded here).
+  fd <- config$interactions$fill_down
+  if (
+    !is.null(fd) &&
+      identical(fd$column, cs$id) &&
+      cs$type %in% .STORE_TYPES &&
+      !cs$type %in% .PICKER_STORE_TYPES
+  ) {
+    inner_cell <- col_def_args$cell
+    col_def_args$cell <- function(value, index) {
+      gk <- tbl$.row_key[index]
+      .with_fill_link(inner_cell(value, index), fd, gk, ns)
+    }
+  }
 
   # Add CSS class markers for gear-toggled columns so the generated
   # .hide-col-{toggle} CSS rule can target both header and body cells.

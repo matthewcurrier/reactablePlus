@@ -64,12 +64,12 @@ cfg <- table_config(
       width = 180,
       options = list(
         # Static fallback shown before a category is picked
-        choices = c("Select a category first" = ""),
+        choices = c("Select a category first" = "__pick_category"),
         # Dynamic choices based on the current row's category value
         choices_fn = function(row_state) {
           cat_val <- row_state[["category"]]
           if (is.null(cat_val) || is.na(cat_val) || !cat_val %in% names(menu)) {
-            return(c("Select a category first" = ""))
+            return(c("Select a category first" = "__pick_category"))
           }
           menu[[cat_val]]
         },

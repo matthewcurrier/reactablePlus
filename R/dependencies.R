@@ -88,6 +88,18 @@ reactable_plus_updates_dep <- function() {
   )
 }
 
+#' Cell-level `*_extra` input family — shared store binding + reconcile.
+#' @noRd
+reactable_extras_dep <- function() {
+  htmlDependency(
+    name = "reactable-extras",
+    version = "0.2.0",
+    src = system.file("assets", package = "reactablePlus"),
+    script = "js/reactable-extras.js",
+    stylesheet = "css/reactable-extras.css"
+  )
+}
+
 #' Include all reactablePlus widget dependencies
 #'
 #' Drop this into your UI (e.g. inside `fluidPage()` or a module's
@@ -121,7 +133,8 @@ useReactablePlus <- function() {
     homeschool_picker_dep(),
     notes_input_dep(),
     gear_popover_dep(),
-    reactable_plus_updates_dep()
+    reactable_plus_updates_dep(),
+    reactable_extras_dep()
   )
 }
 

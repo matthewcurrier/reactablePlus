@@ -83,23 +83,6 @@
     container.classList.toggle(cls, !msg.visible);
   });
 
-  // ── Selection checkbox ───────────────────────────────────────────────────
-  // Message shape: { input_id: "ns-.selected_PK", checked: true|false }
-  //
-  // Updates the checked state of a selection checkbox in-place, avoiding a
-  // full reactable re-render on every checkbox click.  The handler finds the
-  // checkbox by its Shiny input id, sets its checked property, and fires a
-  // synthetic "change" event so any other listeners (e.g. click-to-select
-  // row highlighting) stay in sync.
-
-  Shiny.addCustomMessageHandler("rp_set_checkbox", function (msg) {
-    if (!msg || !msg.input_id) return;
-    var el = document.getElementById(msg.input_id);
-    if (!el || el.type !== "checkbox") return;
-    el.checked = !!msg.checked;
-    el.dispatchEvent(new Event("change", { bubbles: true }));
-  });
-
   // ── Helpers ──────────────────────────────────────────────────────────────
 
   // CSS.escape polyfill — needed because cell/row keys can contain

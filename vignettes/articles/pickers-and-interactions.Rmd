@@ -1,0 +1,329 @@
+---
+title: "Picker Widgets and Rich Interactions"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Picker Widgets and Rich Interactions}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(eval = FALSE, message = FALSE, warning = FALSE)
+```
+
+Some cell edits don't fit in a text box. You want to search a database of
+thousands of options, fill out a small multi-field form, or capture a
+structured rating — all without leaving the row. reactablePlus ships a
+family of **popover picker widgets** for exactly this, and the
+config-driven table module wires them together with three table-level
+interactions: **mutual exclusion**, **fill-down**, and **gear toggles**.
+
+This article covers both halves: the pickers themselves, and the
+interactions that make a table of them feel like an application. If you
+haven't met the config module yet, skim
+[Getting Started](reactablePlus.html) first — and to see everything here
+running at once, launch the bundled demo:
+
+```{r demo}
+reactablePlus::runExample("school-history")
+```
+
+## The picker family
+
+Each picker is a standalone Shiny input backed by a custom JS binding and
+a shared popover. They render a compact trigger in the cell; clicking it
+opens a popover; the chosen value flows back to `input$<id>`.
+
+| Widget | `widget_col` type | Reports |
+|---|---|---|
+| `searchPickerInput()` | `"search_picker"` | the picked record (a list), or `NULL` |
+| `attendancePickerInput()` | `"attendance_picker"` | a list keyed by section, or `NULL` |
+| `homeschoolPickerInput()` | `"homeschool_picker"` | `list(by, by_other, curriculum, notes)`, or `NULL` when off |
+| `notesInput()` | `"notes_input"` | a string |
+| `gearPopoverInput()` | — (table toolbar) | a named list of toggle states |
+
+All of them share one rule: because reactable drops cell-level HTML
+dependencies, the supporting JS/CSS must be loaded once at the page level
+with **`useReactablePlus()`**. Inside the config module that call is
+automatic; standalone, you make it yourself.
+
+### Standalone use
+
+Any picker works as a plain Shiny input, table or no table:
+
+```{r standalone}
+library(shiny)
+library(reactablePlus)
+
+ui <- fluidPage(
+  useReactablePlus(),
+  homeschoolPickerInput("hs", grade_label = "Grade 3"),
+  attendancePickerInput("att", grade_label = "Grade 3"),
+  notesInput("note", placeholder = "Anything else?"),
+  verbatimTextOutput("out")
+)
+
+server <- function(input, output, session) {
+  output$out <- renderPrint({
+    list(homeschool = input$hs, attendance = input$att, note = input$note)
+  })
+
+  # Push a value from the server:
+  observeEvent(input$preset, {
+    updateHomeschoolPickerInput(session, "hs",
+      value = list(by = "Mother", curriculum = "Sonlight"))
+  })
+}
+
+shinyApp(ui, server)
+```
+
+Each constructor has a matching `update*()` function
+(`updateSearchPickerInput()`, `updateAttendancePickerInput()`,
+`updateHomeschoolPickerInput()`, `updateNotesInput()`,
+`updateGearPopoverInput()`) for server-driven changes. The `grade_label`
+argument is just an accessible label for the trigger — the widgets are
+domain-agnostic; "grade" is a holdover from the package's origin and can
+read as anything.
+
+## Typeahead search
+
+`searchPickerInput()` is the heavyweight of the family: a debounced
+typeahead over a backend you supply. You never ship the option list to the
+browser — the widget sends queries to the server, your function answers,
+and the picked row comes back as the value.
+
+The server side is one call, `useTypeaheadSearch()`, given a function
+`(query, limit) -> data.frame`:
+
+```{r typeahead-standalone}
+ui <- fluidPage(
+  useReactablePlus(),
+  searchPickerInput("school", trigger_label = "+ Pick school"),
+  verbatimTextOutput("picked")
+)
+
+server <- function(input, output, session) {
+  schools <- data.frame(
+    id    = c("S1", "S2", "S3"),
+    name  = c("Lincoln Elementary", "Washington Middle", "Jefferson High"),
+    city  = c("Springfield", "Springfield", "Capital City"),
+    stringsAsFactors = FALSE
+  )
+
+  useTypeaheadSearch(input, session, search_fn = function(query, limit) {
+    hits <- grepl(tolower(query), tolower(schools$name))
+    head(schools[hits, , drop = FALSE], limit)
+  })
+
+  output$picked <- renderPrint(input$school)   # the chosen row, as a list
+}
+```
+
+Each returned data-frame row becomes a candidate; the row the user picks
+becomes the widget's value — a list with that row's columns
+(`input$school$name`, `input$school$id`, …). Include whatever fields your
+app needs downstream; you'll see in [Fill-down](#fill-down) that extra
+columns like a valid range can ride along on the value.
+
+### Search inside the config module
+
+In a `table_config()`, you don't call `useTypeaheadSearch()` yourself.
+Name the search column with `search_fn_col`, and hand the search function
+to `config_table_server()`:
+
+```{r typeahead-config}
+cfg <- table_config(
+  row_keys   = c("r1", "r2", "r3"),
+  row_labels = c("Slot 1", "Slot 2", "Slot 3"),
+  columns = list(
+    widget_col("school", "search_picker", "School", min_width = 300)
+  ),
+  search_fn_col = "school"
+)
+
+server <- function(input, output, session) {
+  config_table_server("tbl", cfg, search_fn = function(query, limit) {
+    head(schools[grepl(tolower(query), tolower(schools$name)), ], limit)
+  })
+}
+```
+
+The module routes results to whichever picker asked, across every row.
+
+## Pickers in a table
+
+Putting it together: a school-history record where each grade row can hold
+a searched school, an attendance summary, a homeschool form, and free
+notes. This mirrors the bundled `school-history` demo.
+
+```{r table}
+library(shiny)
+library(reactablePlus)
+library(reactable)
+
+cfg <- table_config(
+  row_keys   = gradeChoices(),                 # PK, K, 01 … 12
+  row_labels = names(gradeChoices()),
+
+  columns = list(
+    widget_col("school", "search_picker", "School",
+      min_width = 300, triggers_rerender = TRUE,
+      options = list(show_fill_down = TRUE)),
+    widget_col("homeschool", "homeschool_picker", "Homeschool",
+      width = 200, triggers_rerender = TRUE,
+      gear_toggle = "showHomeschool"),
+    widget_col("attendance", "attendance_picker", "Attendance",
+      width = 220),
+    widget_col("notes", "notes_input", "Notes", min_width = 150)
+  ),
+
+  search_fn_col = "school",
+  badge_col = "grade", badge_label = "Grade"
+)
+
+server <- function(input, output, session) {
+  result <- config_table_server("history", cfg, search_fn = search_schools)
+  # result$get_data() is your reactive data frame.
+}
+```
+
+`triggers_rerender = TRUE` tells the module that changing this column may
+affect others (here, because school and homeschool exclude each other, and
+because the gate/visibility state can shift), so the table re-renders on
+change. Now the three interactions.
+
+## Mutual exclusion
+
+Two columns that can't both be set: picking a school should clear the
+homeschool entry for that row, and vice versa. Declare it once under
+`interactions$mutual_exclusion` — a list of rules, each saying *when this
+column turns on, clear that one* and what placeholder to show in the
+cleared cell:
+
+```{r mutual-exclusion}
+interactions = list(
+  mutual_exclusion = list(
+    list(
+      when_on = "homeschool", clears = "school",
+      display = '<span style="opacity:.5; font-style:italic;">homeschooled</span>'
+    ),
+    list(when_on = "school", clears = "homeschool", display = "")
+  )
+)
+```
+
+When a rule fires, the module clears the target in server state, swaps the
+cleared cell to show its `display` HTML, and — because both columns are
+`triggers_rerender` — refreshes the row. The cleared widget reports its
+empty value (`NULL`) on the next `get_data()`. The display swap happens
+in place, without a full table re-render, so it stays snappy.
+
+A natural companion is `row_class_fn`, to restyle the whole row when a
+column is active:
+
+```{r row-class}
+row_class_fn = function(row_key, row_state) {
+  if (!is.null(row_state$homeschool)) "is-homeschool" else NULL
+}
+```
+
+## Fill-down {#fill-down}
+
+A student usually attends the same school for several grades in a row.
+Fill-down lets the user set one cell and cascade it down to the empty rows
+below — bounded by a range check. Enable the affordance on the picker
+(`show_fill_down = TRUE`) and describe the cascade under
+`interactions$fill_down`:
+
+```{r fill-down}
+interactions = list(
+  fill_down = list(
+    column = "school",
+    range_check_fn = function(row_key, value) {
+      # `value` is the picked record; cascade only into grades the
+      # school actually serves.
+      gradeInRange(row_key, value$low_grade, value$high_grade)
+    }
+  )
+)
+```
+
+Clicking the picker's down-arrow sends a fill-down request; the module
+reads the source value from server state and writes it into every
+**empty**, **in-range** row beneath the source — skipping rows already
+filled, rows where a mutually-exclusive column is active, and rows your
+`range_check_fn` rejects. This is why it pays to carry extra fields
+(`low_grade`, `high_grade`) on the search result: the range check reads
+them straight off the value.
+
+`fill_down` takes an optional `input_name` (the Shiny input the widget's
+link targets; defaults to `paste0(column, "_fill_down")`) — you rarely
+need to set it.
+
+## Gear toggles
+
+A gear popover in the toolbar holds per-table view options — show/hide
+columns, display modes, density. Define them as a named list of
+`list(label, value)` via `gear_toggles`, then bind a column's visibility
+to a toggle key with `widget_col(gear_toggle = ...)`:
+
+```{r gear}
+cfg <- table_config(
+  row_keys   = gradeChoices(),
+  row_labels = names(gradeChoices()),
+
+  columns = list(
+    widget_col("school", "search_picker", "School"),
+    # Hidden until the "showHomeschool" toggle is on:
+    widget_col("homeschool", "homeschool_picker", "Homeschool",
+      gear_toggle = "showHomeschool")
+  ),
+
+  gear_toggles = list(
+    showNCESId     = list(label = "Show NCES ID",  value = TRUE),
+    showHomeschool = list(label = "Show Homeschool", value = FALSE),
+    compactRows    = list(label = "Compact rows",  value = FALSE)
+  )
+)
+```
+
+Toggling `showHomeschool` reveals or hides the homeschool column in place.
+Other toggles (like `showNCESId` or `compactRows`) are surfaced to the
+module's render settings, so picker widgets and CSS can read them — for
+example, the search picker shows or hides each result's identifier based
+on `showNCESId`.
+
+Standalone, the same popover is `gearPopoverInput()`, reporting a named
+list of toggle states you can react to yourself:
+
+```{r gear-standalone}
+gearPopoverInput("view_opts", toggles = list(
+  dense  = list(label = "Dense rows", value = FALSE),
+  totals = list(label = "Show totals", value = TRUE)
+))
+# server: observe(input$view_opts$dense), update via updateGearPopoverInput()
+```
+
+## Putting it together
+
+These interactions are declarative and composable — mutual exclusion,
+fill-down, gating ([Getting Started](reactablePlus.html#gating)), gear
+toggles, selection, and reset all coexist in one `table_config()`. The
+`school-history` demo combines every one of them over a PreK–12 grade
+ladder; reading its source is the fastest way to see the wiring in a real
+app:
+
+```{r source}
+file.edit(system.file("examples/school-history/app.R",
+                      package = "reactablePlus"))
+```
+
+## See also
+
+- [Getting Started with reactablePlus](reactablePlus.html) — the table
+  module, gating, selection, dynamic and appendable rows.
+- [Editable Cells: the *_extra family](editable-cells.html) — the
+  lower-level cell factories the module is built on.
+- `?searchPickerInput`, `?useTypeaheadSearch`, `?table_config`,
+  `?widget_col` for the reference pages.

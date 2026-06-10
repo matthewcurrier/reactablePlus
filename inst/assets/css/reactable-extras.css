@@ -1,0 +1,44 @@
+/* reactable-extras.css — styling for store-backed *_extra cells. */
+
+/* Toggle button: grey when off, green when on. The store binding flips
+   aria-pressed, so colour follows state without inline style. */
+.rp-toggle {
+  padding: 3px 12px;
+  border-radius: 12px;
+  border: none;
+  color: #fff;
+  font-size: 0.85em;
+  cursor: pointer;
+  background-color: #6c757d;
+}
+
+.rp-toggle[aria-pressed="true"] {
+  background-color: #28a745;
+}
+
+.rp-toggle:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Fill-down affordance on store cells (cascade a value to rows below). */
+.rp-fill-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.rp-fill-down {
+  color: #0d6efd;
+  text-decoration: none;
+  cursor: pointer;
+  font-size: 1.1em;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+
+.rp-fill-down:hover {
+  color: #0a58ca;
+}

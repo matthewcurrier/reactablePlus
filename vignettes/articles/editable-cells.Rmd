@@ -1,0 +1,355 @@
+---
+title: "Editable Cells: the *_extra family"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Editable Cells: the *_extra family}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(eval = FALSE, message = FALSE, warning = FALSE)
+```
+
+reactablePlus gives you two ways to build an editable table, at two
+different altitudes:
+
+- **The `*_extra` cell factories** (this article) drop an editable input
+  into a single [reactable](https://glin.github.io/reactable/) column.
+  You keep full control of the `reactable()` call — its columns, theme,
+  sorting, grouping, everything — and sprinkle in editable cells where
+  you want them.
+- **The config-driven module** (`table_config()` /
+  `config_table_server()`, covered in
+  [Getting Started](reactablePlus.html)) builds an *entire* editable
+  table for you from a declarative spec, and layers on gating, selection,
+  reset, mutual exclusion, fill-down, and three row modes.
+
+Reach for `*_extra` when you already have a reactable and just need a
+column or two to be editable. Graduate to the config module when the
+table itself — its lifecycle, validation, and interactions — is the thing
+you're building. The two share the same underlying machinery, so what you
+learn here carries over.
+
+## A first editable column
+
+Every `*_extra` factory returns a **cell renderer** — a function suitable
+for `reactable::colDef(cell = )`. Here is a read-only data frame with one
+editable "comment" column:
+
+```{r first}
+library(shiny)
+library(reactable)
+library(reactablePlus)
+
+tasks <- data.frame(
+  id      = 1:3,
+  task    = c("Draft proposal", "Review budget", "Send invites"),
+  comment = c("", "", ""),
+  stringsAsFactors = FALSE
+)
+
+ui <- fluidPage(
+  useReactablePlus(),                 # 1. load the JS/CSS once, page-level
+  reactableOutput("tbl"),
+  verbatimTextOutput("out")
+)
+
+server <- function(input, output, session) {
+  output$tbl <- renderReactable({
+    bindExtrasOnRender(               # 3. attach the render hook
+      reactable(
+        tasks,
+        columns = list(
+          comment = colDef(
+            html = TRUE,              # 2. opt the column into HTML cells
+            cell = text_extra("comment", placeholder = "Add a note…")
+          )
+        )
+      )
+    )
+  })
+
+  output$out <- renderPrint({
+    input$comment                     # a named list keyed by row index
+  })
+}
+
+shinyApp(ui, server)
+```
+
+Three pieces of wiring are non-negotiable, and they map to the numbered
+comments above:
+
+1. **`useReactablePlus()`** at the page level. reactable renders cells
+   with React and *drops* any `htmlDependency` returned from a cell
+   function, so the supporting JS/CSS cannot ride along inside the cell —
+   it has to be injected once at the top of the UI.
+2. **`html = TRUE`** on the column's `colDef`, so reactable emits the
+   factory's HTML instead of escaping it.
+3. **`bindExtrasOnRender()`** wrapping the `reactable()` call. This
+   attaches a render hook that seeds each column's value and keeps edits
+   reconciled across repaints (more on that below).
+
+Miss any one and the cells render but won't report values.
+
+## The value-return contract
+
+This is the single most important idea in the `*_extra` family.
+
+**An entire column reports under one Shiny input.** The input is named by
+the column id (prefixed by the module namespace; see
+[Inside a module](#inside-a-module)). Its value is a **named list keyed by
+the reactable row index**, in original data order:
+
+```{r contract}
+# For text_extra("comment") over the 3-row data frame above:
+input$comment
+#> list(`1` = "Call vendor", `2` = "", `3` = "Booked room")
+
+# Flatten to a plain vector when you want one:
+unlist(input$comment)
+#>            1            2            3
+#> "Call vendor"          ""  "Booked room"
+```
+
+Keying by **row index** rather than DOM position is deliberate: it keeps
+the value mapped to the right record even after reactable sorts, filters,
+or paginates. The list is fully seeded at render time, then updated
+per-cell as the user types — so `input$comment` is populated immediately,
+before any editing.
+
+A few type-specific notes on what arrives in R:
+
+- `numeric_extra` reports numbers; an empty cell reports as `NULL` (and so
+  drops out of the named list).
+- `date_extra` reports `"YYYY-MM-DD"` strings; empty cells report `NULL`.
+- `checkbox_extra` and `toggle_extra` report logicals.
+- Because JavaScript has no int/float distinction, whole numbers arrive as
+  integers and fractional ones as doubles — test with `is.numeric()`, not
+  `is.double()`.
+
+## The factory family
+
+All factories share the same first two arguments — `col_id` and `ns` —
+and the same contract. They differ only in the control they render and the
+type they coerce to.
+
+```{r family}
+# Free text
+text_extra("comment", placeholder = "Optional…")
+
+# Notes — text_extra plus the package's inline-input styling
+notes_extra("notes", placeholder = "Context…")
+
+# Numbers, with optional bounds and step
+numeric_extra("qty", min = 0, max = 100, step = 1)
+
+# Dates, with optional bounds (Date or "YYYY-MM-DD")
+date_extra("due", min_date = "2024-01-01", max_date = "2030-12-31")
+
+# Checkbox → TRUE / FALSE
+checkbox_extra("done")
+
+# On/off button → TRUE / FALSE, with custom labels
+toggle_extra("billable", on_label = "Billable", off_label = "No charge")
+
+# Dropdown — choices in any normalize_choices() format
+dropdown_extra("status",
+  choices = c("Open" = "open", "Blocked" = "blocked", "Done" = "done"),
+  placeholder = "-- pick --"
+)
+```
+
+`dropdown_extra()` accepts the same three choice formats as the rest of
+the package — a plain vector, a named vector (names become labels), or a
+list of `list(label, value)` — all normalized by `normalize_choices()`.
+Supplying a `placeholder` adds a disabled empty option, so an unset cell
+seeds as `""` rather than silently defaulting to the first option.
+
+A small mixed table:
+
+```{r mixed}
+inventory <- data.frame(
+  item     = c("Widgets", "Gadgets", "Gizmos"),
+  qty      = c(0, 0, 0),
+  status   = c("", "", ""),
+  in_stock = c(FALSE, FALSE, FALSE),
+  stringsAsFactors = FALSE
+)
+
+reactable(
+  inventory,
+  columns = list(
+    qty = colDef(html = TRUE,
+      cell = numeric_extra("qty", min = 0)),
+    status = colDef(html = TRUE,
+      cell = dropdown_extra("status",
+        choices = c("In stock", "Backordered", "Discontinued"),
+        placeholder = "-- status --")),
+    in_stock = colDef(html = TRUE,
+      cell = checkbox_extra("in_stock"))
+  )
+) |>
+  bindExtrasOnRender()
+```
+
+## Collecting the edited data
+
+Because each column is its own input, assembling a result data frame is a
+matter of zipping the columns together by row index. A small helper keeps
+empty cells aligned (remember: empty numeric/date cells drop out of the
+list):
+
+```{r collect}
+# Read a column input into a length-n vector, filling gaps with `fill`.
+collect_col <- function(col_input, n, fill = NA) {
+  vapply(seq_len(n), function(i) {
+    v <- col_input[[as.character(i)]]
+    if (is.null(v)) fill else v
+  }, FUN.VALUE = fill)
+}
+
+edited <- reactive({
+  n <- nrow(inventory)
+  data.frame(
+    item     = inventory$item,
+    qty      = collect_col(input$qty, n, NA_real_),
+    status   = collect_col(input$status, n, NA_character_),
+    in_stock = collect_col(input$in_stock, n, FALSE),
+    stringsAsFactors = FALSE
+  )
+})
+```
+
+For the common all-text case you can lean on `unlist(input$comment)`
+directly; the helper above is the robust version for mixed/optional
+columns.
+
+## Changing cells from the server
+
+Edits flow client → server automatically. To push the other way — clear a
+column, copy a value down, apply a computed default — use
+`update_extra()`. It writes the authoritative value into the client-side
+store *and* the live DOM, so the change survives reactable's repaints:
+
+```{r update-extra}
+# Clear every comment (3 rows), keyed by row index:
+observeEvent(input$clear, {
+  update_extra(session, "comment",
+    values = setNames(as.list(rep("", 3)), as.character(1:3))
+  )
+})
+
+# Copy row 1's status down to rows 2 and 3:
+observeEvent(input$fill_down, {
+  v <- input$status[["1"]]
+  update_extra(session, "status",
+    values = list(`2` = v, `3` = v)
+  )
+})
+```
+
+`values` is a named list keyed by the same row ids you see in the input
+(here, the row index). Rows you omit are left untouched. Inside a module,
+pass `ns = session$ns("")` so the message reaches the namespaced input.
+
+Why a dedicated function instead of re-rendering? On every repaint the
+store **wins**: it re-applies stored values to freshly painted cells so a
+sort or filter never visually reverts an edit. A plain server-side
+re-render would fight that reconcile; `update_extra()` updates the store
+itself, so the new value sticks.
+
+## Sorting and filtering: the one caveat
+
+Edited values live in the JS store, **not** in reactable's data. reactable
+sorts and filters by its original load-time values, so an editable column
+would order rows by data the user can no longer see once they start
+typing. The fix is simple:
+
+```{r sortable}
+status = colDef(
+  html       = TRUE,
+  sortable   = FALSE,    # don't sort by stale load-time values
+  filterable = FALSE,
+  cell       = dropdown_extra("status", choices = c("Open", "Done"))
+)
+```
+
+Set `sortable = FALSE` (and `filterable = FALSE`) on `*_extra` columns,
+and sort/filter on the table's read-only columns instead.
+
+## Inside a module {#inside-a-module}
+
+The `*_extra` factories are namespace-aware. In a Shiny module, pass
+`ns = session$ns("")` so the column reports under the module's namespaced
+input, and use the same prefix in `update_extra()`:
+
+```{r module}
+my_table_ui <- function(id) {
+  ns <- NS(id)
+  tagList(
+    useReactablePlus(),
+    reactableOutput(ns("tbl"))
+  )
+}
+
+my_table_server <- function(id, df) {
+  moduleServer(id, function(input, output, session) {
+    output$tbl <- renderReactable({
+      bindExtrasOnRender(reactable(df, columns = list(
+        comment = colDef(html = TRUE,
+          cell = text_extra("comment", ns = session$ns("")))
+      )))
+    })
+
+    # input$comment is namespaced automatically; update_extra needs the ns:
+    observeEvent(input$reset, {
+      update_extra(session, "comment",
+        values = setNames(as.list(rep("", nrow(df))),
+                          as.character(seq_len(nrow(df)))),
+        ns = session$ns("")
+      )
+    })
+  })
+}
+```
+
+`useReactablePlus()` is also safe to call once at the app level instead of
+in every module UI — whichever fits your layout.
+
+## v1 assumption: render all rows
+
+The store seeds itself from the cells present at first paint, so the
+current design assumes **pagination is off** (all rows rendered at
+startup). With server-side pagination, rows not yet painted won't seed
+until they appear. For editable `*_extra` tables, render the full set
+(`defaultPageSize` large enough, or `pagination = FALSE`).
+
+## When to graduate to `config_table`
+
+The `*_extra` family is intentionally low-level: it edits cells and
+reports values, and leaves everything else to you. If you find yourself
+hand-rolling any of the following, the
+[config-driven module](reactablePlus.html) already has it:
+
+- conditional inputs that lock until other cells are set (**gating**),
+- a column that clears another when set (**mutual exclusion**),
+- a "copy this down to the rows below" affordance (**fill-down**),
+- row **selection**, a **reset** button, or show/hide **gear toggles**,
+- **dynamic** rows from a reactive data frame, or **appendable**
+  user-managed rows,
+- server-side **validation** and gate-enforced output.
+
+Under the hood, the config module renders its primitive columns *and its
+popover pickers* as these very same store-backed cells — so the contract
+you learned here is exactly what `config_table_server()` reads from.
+
+## See also
+
+- [Getting Started with reactablePlus](reactablePlus.html) — the
+  config-driven table module end to end.
+- [Picker widgets and rich interactions](pickers-and-interactions.html) —
+  typeahead search, multi-field popovers, mutual exclusion, and fill-down.
+- `?text_extra`, `?update_extra`, `?bindExtrasOnRender` for the reference
+  pages.
