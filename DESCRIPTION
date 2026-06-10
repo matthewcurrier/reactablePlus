@@ -1,6 +1,6 @@
 Package: reactablePlus
 Title: Enhanced Interactive Tables with Inline Editors for Shiny
-Version: 0.2.0
+Version: 0.2.0.9000
 Authors@R:
     person("Matthew", "Currier", email = "currier.matthew@gmail.com",
            role = c("aut", "cre"))
