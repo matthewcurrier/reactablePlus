@@ -32,6 +32,10 @@
 #'   Default `"Type 2+ characters to search 100k+ US schools"`.
 #' @param no_match_hint Character. Text shown when search returns no results.
 #'   Default `"No schools match. Check spelling \u2014 picking is required."`.
+#' @param show_fill_up Logical. Whether to show the "fill up" action, which
+#'   applies the picked value to EARLIER empty rows. Defaults to FALSE so
+#'   existing tables are unchanged. Both directions send the same Shiny input;
+#'   the payload's `direction` field distinguishes them.
 #' @param show_fill_down Logical. Whether to show the "fill down" action
 #'   link in the filled state. Default `TRUE`.
 #' @param ns Character. The Shiny module namespace prefix for search
@@ -75,6 +79,7 @@ searchPickerInput <- function(
   empty_hint = "Type 2+ characters to search 100k+ US schools",
   no_match_hint = "No schools match. Check spelling \u2014 picking is required.",
   show_fill_down = TRUE,
+  show_fill_up = FALSE,
   ns = "",
   width = "100%"
 ) {
@@ -98,6 +103,7 @@ searchPickerInput <- function(
     `data-empty-hint` = empty_hint,
     `data-no-match-hint` = no_match_hint,
     `data-show-fill-down` = tolower(as.character(show_fill_down)),
+    `data-show-fill-up` = tolower(as.character(show_fill_up)),
     `data-ns` = ns
   )
 
