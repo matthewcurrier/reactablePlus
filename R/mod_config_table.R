@@ -662,8 +662,23 @@ config_table_server <- function(
           "when_on"
         )
 
+        # DIRECTION. "down" (the default, and what every caller predating
+        # fill-up sends) fills rows AFTER the source; "up" fills rows before
+        # it. Order within the selection is irrelevant — each target row is
+        # tested independently against range_check_fn and filled only if
+        # empty, so there is no carry from one row to the next.
+        #
+        # The direction rides in the message rather than in a second
+        # interaction entry so both buttons share one input, one observer and
+        # one range check. A separate `fill_up` config key would have doubled
+        # all three and let them drift.
+        direction <- tolower(as.character(msg$direction %||% "down"))
         current_keys <- effective_keys()
-        fill_keys <- current_keys[seq_along(current_keys) > from_idx]
+        fill_keys <- if (identical(direction, "up")) {
+          current_keys[seq_along(current_keys) < from_idx]
+        } else {
+          current_keys[seq_along(current_keys) > from_idx]
+        }
 
         # Track which row keys actually received a fill, so we can push
         # the new value to each picker via sendInputMessage afterwards.
