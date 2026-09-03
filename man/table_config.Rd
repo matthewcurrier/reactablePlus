@@ -94,7 +94,7 @@ column ID. Called once per row when \code{data_r()} provides a data frame.}
 \item{to_output_fn}{Function \verb{(row_state, row_key)} -> single-row
 data.frame. Converts one row of state back to the output schema.}
 
-\item{toolbar_stats_fn}{Function \verb{(rows, row_keys)} -> \link[shiny:reexports]{shiny::HTML}
+\item{toolbar_stats_fn}{Function \verb{(rows, row_keys)} -> \link[shiny:HTML]{shiny::HTML}
 string for the toolbar. Pass \code{NULL} for no toolbar.}
 
 \item{search_fn_col}{Character. Column ID that requires server-side

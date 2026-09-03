@@ -1,3 +1,14 @@
+# reactablePlus 0.2.0.9001
+
+* `search_picker` columns gain `show_fill_up` (default `FALSE`), which renders a
+  "fill ↑" action alongside "fill ↓". It applies the picked value to EARLIER
+  empty rows, where fill-down applies it to later ones.
+
+  Both directions send the same Shiny input; the payload's new `direction`
+  field ("up" / "down") tells them apart, and an absent `direction` means
+  "down". So one observer and one `range_check_fn` serve both, and existing
+  `interactions$fill_down` configurations are unaffected.
+
 # reactablePlus (development version)
 
 # reactablePlus 0.2.0
