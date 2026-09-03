@@ -749,7 +749,8 @@
         search_placeholder = opts$search_placeholder,
         empty_hint = opts$empty_hint,
         no_match_hint = opts$no_match_hint,
-        show_fill_down = opts$show_fill_down %||% TRUE
+        show_fill_down = opts$show_fill_down %||% TRUE,
+        show_fill_up = opts$show_fill_up %||% FALSE
       ))
       .store_wrap(
         .wrap_cell(

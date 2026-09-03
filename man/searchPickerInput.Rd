@@ -17,6 +17,7 @@ searchPickerInput(
   empty_hint = "Type 2+ characters to search 100k+ US schools",
   no_match_hint = "No schools match. Check spelling — picking is required.",
   show_fill_down = TRUE,
+  show_fill_up = FALSE,
   ns = "",
   width = "100\%"
 )
@@ -55,6 +56,11 @@ Default \code{"No schools match. Check spelling \\u2014 picking is required."}.}
 
 \item{show_fill_down}{Logical. Whether to show the "fill down" action
 link in the filled state. Default \code{TRUE}.}
+
+\item{show_fill_up}{Logical. Whether to show the "fill up" action, which
+applies the picked value to EARLIER empty rows. Defaults to FALSE so
+existing tables are unchanged. Both directions send the same Shiny input;
+the payload's \code{direction} field distinguishes them.}
 
 \item{ns}{Character. The Shiny module namespace prefix for search
 communication. Pass \code{session$ns("")} from within a module. For

@@ -7,11 +7,16 @@
 //   R → JS:  session$sendCustomMessage("sh-search-results", { results, request_id, source_id })
 //
 // Fill-down action:
-//   JS → R:  Shiny.setInputValue(ns + "school_fill_down", { from_grade, school }, { priority: "event" })
+//   JS → R:  Shiny.setInputValue(ns + "school_fill_down",
+//              { from_grade, school, direction }, { priority: "event" })
+//            `direction` is "down" or "up". Both buttons send the SAME input:
+//            one observer, one range check, no chance of the two drifting.
+//            Omitting it means "down", which is what pre-fill-up callers do.
 //
 // Configurable labels (via data attributes):
 //   data-trigger-label, data-popover-title, data-search-placeholder,
-//   data-empty-hint, data-no-match-hint, data-show-fill-down
+//   data-empty-hint, data-no-match-hint, data-show-fill-down,
+//   data-show-fill-up
 
 (function () {
   "use strict";
@@ -244,6 +249,9 @@
         "Search by school name, city, district\u2026";
       var showFillDown =
         el.getAttribute("data-show-fill-down") !== "false";
+      // Opt-IN, unlike fill-down: a table predating this attribute must keep
+      // exactly the affordances it already had.
+      var showFillUp = el.getAttribute("data-show-fill-up") === "true";
 
       // Search state (persists while popover is open)
       $(el).data("sh-search-state", {
@@ -330,23 +338,41 @@
           });
           actions.appendChild(changeBtn);
 
-          if (showFillDown) {
+          // Both fill directions are the same button with one field
+          // changed, so one factory builds them. Writing them out twice is
+          // how the two silently stop matching.
+          var addFillButton = function (direction, glyph, title) {
             actions.appendChild(makeDot());
 
             var fillBtn = document.createElement("button");
             fillBtn.type = "button";
             fillBtn.className = "link-btn pv-action";
-            fillBtn.textContent = "fill \u2193";
-            fillBtn.title = "Apply this school to all later empty grades";
+            fillBtn.textContent = "fill " + glyph;
+            fillBtn.title = title;
             fillBtn.addEventListener("click", function (e) {
               e.stopPropagation();
               Shiny.setInputValue(
                 ns + "school_fill_down",
-                { from_grade: gradeKey, school: v },
+                { from_grade: gradeKey, school: v, direction: direction },
                 { priority: "event" }
               );
             });
             actions.appendChild(fillBtn);
+          };
+
+          if (showFillUp) {
+            addFillButton(
+              "up",
+              "↑",
+              "Apply this school to all earlier empty grades"
+            );
+          }
+          if (showFillDown) {
+            addFillButton(
+              "down",
+              "↓",
+              "Apply this school to all later empty grades"
+            );
           }
 
           actions.appendChild(makeDot());

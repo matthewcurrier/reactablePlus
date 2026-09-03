@@ -20,5 +20,10 @@ Useful links:
 \author{
 \strong{Maintainer}: Matthew Currier \email{currier.matthew@gmail.com}
 
+Authors:
+\itemize{
+  \item Matthew Currier \email{currier.matthew@gmail.com}
+}
+
 }
 \keyword{internal}

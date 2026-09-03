@@ -46,13 +46,13 @@ and selection state need to be replaced atomically. The
 recommended calling pattern uses a \code{reactiveVal(NULL)} that is
 only set when a genuine switch occurs:
 \preformatted{
-    reset <- reactiveVal(NULL)
-    observeEvent(input$switch_report, {
-      reset(list(data = load_report(input$report_id),
-                 selected = NULL))
-    })
-    config_table_server("tbl", cfg, reset_signal = reset)
-  }}
+  reset <- reactiveVal(NULL)
+  observeEvent(input$switch_report, {
+    reset(list(data = load_report(input$report_id),
+               selected = NULL))
+  })
+  config_table_server("tbl", cfg, reset_signal = reset)
+}}
 
 \item{search_fn}{A function \verb{(query, limit)} → data.frame for
 server-side typeahead search. Required when any column uses
