@@ -1,3 +1,5 @@
+# reactablePlus 0.2.1
+
 # reactablePlus 0.2.0.9001
 
 * `search_picker` columns gain `show_fill_up` (default `FALSE`), which renders a
