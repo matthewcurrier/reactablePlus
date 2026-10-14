@@ -1012,11 +1012,12 @@ config_table_server <- function(
           if (!is.list(row_state)) {
             return(NULL)
           }
-          # Enforce gating: force empty_value where gate is closed
+          # Enforce gating: force empty_value where the column is locked or
+          # the row's gate is closed
           sanitized <- purrr::reduce(
             config$columns,
             function(acc, cs) {
-              if (!is.null(cs$gate) && !.is_gate_open(cs$gate, acc)) {
+              if (.cell_locked(cs, acc)) {
                 acc[[cs$id]] <- cs$empty_value
               }
               acc

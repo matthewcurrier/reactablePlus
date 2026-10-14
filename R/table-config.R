@@ -561,6 +561,17 @@ table_config <- function(
 #'
 #'   Default `NULL` (no gating — always enabled).
 #'
+#' @param locked Locks the column: `NULL` (default, never), `TRUE`/`FALSE`,
+#'   or a function returning one, evaluated each time the table renders
+#'   (e.g. a plan or permission check). A function of no arguments locks the
+#'   whole column; a function of one argument is given the row's state (a
+#'   named list) and locks row by row -- mark the columns it reads
+#'   `triggers_rerender = TRUE` so a change redraws the row. A locked cell
+#'   renders disabled and dimmed, and its value is forced to `empty_value`
+#'   in `get_data()`. `text` and `notes_input` cells also leave their value
+#'   out of the page and show `options$locked_placeholder` instead of
+#'   `options$placeholder`. A function that errors locks the cell.
+#'
 #' @param gear_toggle Character or NULL. The gear toggle key that
 #'   controls this column's visibility. When the toggle is off, the
 #'   column is hidden (set to `show = FALSE`).
@@ -623,6 +634,7 @@ widget_col <- function(
   min_width = NULL,
   options = list(),
   gate = NULL,
+  locked = NULL,
   gear_toggle = NULL,
   triggers_rerender = FALSE,
   empty_value = NULL,
@@ -653,6 +665,16 @@ widget_col <- function(
       "Must be one of: ",
       paste(valid_types, collapse = ", "),
       ".",
+      call. = FALSE
+    )
+  }
+
+  # ── Lock validation ──────────────────────────────────────────────────────
+
+  if (!is.null(locked) && !is.function(locked) &&
+        !(is.logical(locked) && length(locked) == 1L)) {
+    stop(
+      "locked must be NULL, TRUE/FALSE, or a function returning one.",
       call. = FALSE
     )
   }
@@ -762,6 +784,7 @@ widget_col <- function(
       min_width = min_width,
       options = options,
       gate = gate,
+      locked = locked,
       gear_toggle = gear_toggle,
       triggers_rerender = triggers_rerender,
       empty_value = empty_value,

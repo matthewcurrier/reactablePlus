@@ -222,6 +222,41 @@
 }
 
 
+#' Is this column locked for this row right now?
+#'
+#' `widget_col(locked = )` is NULL, a logical, or a function the app
+#' evaluates at render time (e.g. a plan or permission check): with no
+#' arguments it locks the whole column, with one it is given the row's state
+#' and can lock row by row. A function that errors locks the cell: failing
+#' closed is the safe default for a column someone chose to lock.
+#' @param cs  A `widget_col` spec.
+#' @param row The row's state, a named list.
+#' @return Logical scalar.
+#' @noRd
+.column_locked <- function(cs, row = list()) {
+  lock <- cs$locked
+  if (is.null(lock)) {
+    return(FALSE)
+  }
+  if (is.function(lock)) {
+    row <- if (is.list(row)) row else list()
+    lock <- tryCatch(
+      if (length(formals(lock)) == 0L) lock() else lock(row),
+      error = function(e) TRUE
+    )
+  }
+  isTRUE(lock)
+}
+
+
+#' Is this cell locked, by its column's lock or by its row's gate?
+#' @noRd
+.cell_locked <- function(cs, row) {
+  .column_locked(cs, row) ||
+    !.is_gate_open(cs$gate, if (is.list(row)) row else list())
+}
+
+
 #' Build inline CSS + disabled attribute for a locked input.
 #' Returns a named list of tag attributes to splice into htmltools calls.
 #' @noRd
@@ -860,9 +895,19 @@
         note_val <- ""
       }
 
+      # A locked column never puts its value in the page.
+      col_locked <- .column_locked(cs, row)
+      if (col_locked) {
+        note_val <- ""
+        placeholder <- opts$locked_placeholder %||% placeholder
+      }
+
       .extra_value_cell(
         ns(cs$id), "text", "text", note_val, gk,
-        attrs = list(placeholder = placeholder),
+        attrs = c(
+          list(placeholder = placeholder),
+          if (col_locked) .locked_attrs(TRUE) else list()
+        ),
         class = "cell-input"
       )
     },
@@ -888,7 +933,7 @@
       gk <- tbl$.row_key[index]
       row <- current_rows[[gk]]
       current_val <- if (is.list(row)) row[[cs$id]] else NULL
-      locked <- !.is_gate_open(cs$gate, if (is.list(row)) row else list())
+      locked <- .cell_locked(cs, row)
 
       opts <- cs$options
       # Resolve choices: dynamic choices_fn takes precedence over static
@@ -912,7 +957,7 @@
       gk <- tbl$.row_key[index]
       row <- current_rows[[gk]]
       current_val <- if (is.list(row)) row[[cs$id]] else NULL
-      locked <- !.is_gate_open(cs$gate, if (is.list(row)) row else list())
+      locked <- .cell_locked(cs, row)
 
       opts <- cs$options
       initial <- if (is.null(current_val) || is.na(current_val)) {
@@ -934,7 +979,7 @@
       gk <- tbl$.row_key[index]
       row <- current_rows[[gk]]
       current_val <- if (is.list(row)) row[[cs$id]] else NULL
-      locked <- !.is_gate_open(cs$gate, if (is.list(row)) row else list())
+      locked <- .cell_locked(cs, row)
 
       opts <- cs$options
       initial <- if (is.null(current_val) || is.na(current_val)) {
@@ -956,7 +1001,7 @@
       gk <- tbl$.row_key[index]
       row <- current_rows[[gk]]
       is_checked <- isTRUE(if (is.list(row)) row[[cs$id]] else FALSE)
-      locked <- !.is_gate_open(cs$gate, if (is.list(row)) row else list())
+      locked <- .cell_locked(cs, row)
 
       .extra_checkbox_cell(
         ns(cs$id), is_checked, gk,
@@ -968,7 +1013,7 @@
       gk <- tbl$.row_key[index]
       row <- current_rows[[gk]]
       is_on <- isTRUE(if (is.list(row)) row[[cs$id]] else FALSE)
-      locked <- !.is_gate_open(cs$gate, if (is.list(row)) row else list())
+      locked <- .cell_locked(cs, row)
 
       lock_attrs <- if (locked) {
         list(
@@ -986,13 +1031,20 @@
       gk <- tbl$.row_key[index]
       row <- current_rows[[gk]]
       current_val <- if (is.list(row)) row[[cs$id]] else NULL
-      locked <- !.is_gate_open(cs$gate, if (is.list(row)) row else list())
+      locked <- .cell_locked(cs, row)
 
       opts <- cs$options
-      initial <- if (is.null(current_val) || is.na(current_val)) {
+      # A locked column never puts its value in the page.
+      col_locked <- .column_locked(cs, row)
+      initial <- if (col_locked || is.null(current_val) || is.na(current_val)) {
         ""
       } else {
         as.character(current_val)
+      }
+      placeholder <- if (col_locked) {
+        opts$locked_placeholder %||% opts$placeholder
+      } else {
+        opts$placeholder
       }
 
       .extra_value_cell(
@@ -1000,7 +1052,7 @@
         attrs = c(
           purrr::compact(list(
             maxlength = opts$max_chars,
-            placeholder = opts$placeholder
+            placeholder = placeholder
           )),
           .locked_attrs(locked, "width: 100%; padding: 4px;")
         )
