@@ -50,6 +50,16 @@ describe(".column_locked", {
     expect_true(column_locked(cs))
   })
 
+  it("gives a one-argument function the row, to lock row by row", {
+    cs <- widget_col(
+      "n", "text", "N",
+      locked = function(row) identical(row$kind, "private")
+    )
+    expect_true(column_locked(cs, list(kind = "private")))
+    expect_false(column_locked(cs, list(kind = "public")))
+    expect_false(column_locked(cs))
+  })
+
   it("fails closed when the function errors", {
     cs <- widget_col("n", "text", "N", locked = function() stop("boom"))
     expect_true(column_locked(cs))
@@ -88,6 +98,22 @@ test_that("an unlocked text cell still shows its value", {
   html <- render_cell(cs, list(notes = "a visible note"))
   expect_match(html, "a visible note", fixed = TRUE)
   expect_false(grepl("disabled", html, fixed = TRUE))
+})
+
+test_that("a row-by-row lock hides only the locked row's value", {
+  cs <- widget_col(
+    "notes", "text", "Notes",
+    locked = function(row) identical(row$kind, "private")
+  )
+  expect_false(grepl(
+    "kept back", render_cell(cs, list(kind = "private", notes = "kept back")),
+    fixed = TRUE
+  ))
+  expect_match(
+    render_cell(cs, list(kind = "public", notes = "shown")),
+    "shown",
+    fixed = TRUE
+  )
 })
 
 test_that("a locked notes_input cell is disabled and leaves its value out", {

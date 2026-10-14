@@ -81,14 +81,16 @@ the column whose \code{id} matches \code{col_id} must have a value in
 
 Default \code{NULL} (no gating — always enabled).}
 
-\item{locked}{Locks the whole column, for every row: \code{NULL} (default,
-never), \code{TRUE}/\code{FALSE}, or a zero-argument function returning one,
-evaluated each time the table renders (e.g. a plan or permission
-check). A locked cell renders disabled and dimmed, and its value is
-forced to \code{empty_value} in \code{get_data()}. \code{text} and \code{notes_input}
-cells also leave their value out of the page and show
-\code{options$locked_placeholder} instead of \code{options$placeholder}. A
-function that errors locks the column.}
+\item{locked}{Locks the column: \code{NULL} (default, never), \code{TRUE}/\code{FALSE},
+or a function returning one, evaluated each time the table renders
+(e.g. a plan or permission check). A function of no arguments locks the
+whole column; a function of one argument is given the row's state (a
+named list) and locks row by row -- mark the columns it reads
+\code{triggers_rerender = TRUE} so a change redraws the row. A locked cell
+renders disabled and dimmed, and its value is forced to \code{empty_value}
+in \code{get_data()}. \code{text} and \code{notes_input} cells also leave their value
+out of the page and show \code{options$locked_placeholder} instead of
+\code{options$placeholder}. A function that errors locks the cell.}
 
 \item{gear_toggle}{Character or NULL. The gear toggle key that
 controls this column's visibility. When the toggle is off, the

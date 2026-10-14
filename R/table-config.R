@@ -561,14 +561,16 @@ table_config <- function(
 #'
 #'   Default `NULL` (no gating — always enabled).
 #'
-#' @param locked Locks the whole column, for every row: `NULL` (default,
-#'   never), `TRUE`/`FALSE`, or a zero-argument function returning one,
-#'   evaluated each time the table renders (e.g. a plan or permission
-#'   check). A locked cell renders disabled and dimmed, and its value is
-#'   forced to `empty_value` in `get_data()`. `text` and `notes_input`
-#'   cells also leave their value out of the page and show
-#'   `options$locked_placeholder` instead of `options$placeholder`. A
-#'   function that errors locks the column.
+#' @param locked Locks the column: `NULL` (default, never), `TRUE`/`FALSE`,
+#'   or a function returning one, evaluated each time the table renders
+#'   (e.g. a plan or permission check). A function of no arguments locks the
+#'   whole column; a function of one argument is given the row's state (a
+#'   named list) and locks row by row -- mark the columns it reads
+#'   `triggers_rerender = TRUE` so a change redraws the row. A locked cell
+#'   renders disabled and dimmed, and its value is forced to `empty_value`
+#'   in `get_data()`. `text` and `notes_input` cells also leave their value
+#'   out of the page and show `options$locked_placeholder` instead of
+#'   `options$placeholder`. A function that errors locks the cell.
 #'
 #' @param gear_toggle Character or NULL. The gear toggle key that
 #'   controls this column's visibility. When the toggle is off, the
