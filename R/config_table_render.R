@@ -222,31 +222,37 @@
 }
 
 
-#' Is a whole column locked right now?
+#' Is this column locked for this row right now?
 #'
-#' `widget_col(locked = )` is NULL, a logical, or a zero-argument function
-#' the app evaluates at render time (e.g. a plan or permission check). A
-#' function that errors locks the column: failing closed is the safe default
-#' for a column someone chose to lock.
-#' @param cs A `widget_col` spec.
+#' `widget_col(locked = )` is NULL, a logical, or a function the app
+#' evaluates at render time (e.g. a plan or permission check): with no
+#' arguments it locks the whole column, with one it is given the row's state
+#' and can lock row by row. A function that errors locks the cell: failing
+#' closed is the safe default for a column someone chose to lock.
+#' @param cs  A `widget_col` spec.
+#' @param row The row's state, a named list.
 #' @return Logical scalar.
 #' @noRd
-.column_locked <- function(cs) {
+.column_locked <- function(cs, row = list()) {
   lock <- cs$locked
   if (is.null(lock)) {
     return(FALSE)
   }
   if (is.function(lock)) {
-    lock <- tryCatch(lock(), error = function(e) TRUE)
+    row <- if (is.list(row)) row else list()
+    lock <- tryCatch(
+      if (length(formals(lock)) == 0L) lock() else lock(row),
+      error = function(e) TRUE
+    )
   }
   isTRUE(lock)
 }
 
 
-#' Is this cell locked, by its column or by its row's gate?
+#' Is this cell locked, by its column's lock or by its row's gate?
 #' @noRd
 .cell_locked <- function(cs, row) {
-  .column_locked(cs) ||
+  .column_locked(cs, row) ||
     !.is_gate_open(cs$gate, if (is.list(row)) row else list())
 }
 
@@ -890,7 +896,7 @@
       }
 
       # A locked column never puts its value in the page.
-      col_locked <- .column_locked(cs)
+      col_locked <- .column_locked(cs, row)
       if (col_locked) {
         note_val <- ""
         placeholder <- opts$locked_placeholder %||% placeholder
@@ -1029,7 +1035,7 @@
 
       opts <- cs$options
       # A locked column never puts its value in the page.
-      col_locked <- .column_locked(cs)
+      col_locked <- .column_locked(cs, row)
       initial <- if (col_locked || is.null(current_val) || is.na(current_val)) {
         ""
       } else {
