@@ -356,9 +356,14 @@ config_table_server <- function(
           )
 
           # Merge state: preserve existing, add defaults for new
+          known_keys <- names(rows())
           merged <- .merge_dynamic_rows(config, new_keys, rows())
 
-          # If data_r has saved data, apply it on top
+          # Saved data seeds only the rows this table has not held before. A
+          # row it already holds keeps its edits: applying data_r() on top of
+          # every row here, on every source_data change (adding a row, say),
+          # silently reverted every unsaved edit on every saved row. A change
+          # to data_r itself is the data_r() observer's job, below.
           saved_data <- shiny::isolate(data_r())
           if (
             !is.null(saved_data) &&
@@ -369,7 +374,7 @@ config_table_server <- function(
             purrr::walk(seq_len(nrow(saved_data)), function(i) {
               db_row <- saved_data[i, ]
               gk <- as.character(db_row[[1]])
-              if (gk %in% new_keys) {
+              if (gk %in% new_keys && !(gk %in% known_keys)) {
                 parsed <- config$from_saved_fn(db_row, config$columns)
                 if (is.list(parsed)) {
                   purrr::iwalk(parsed, function(val, nm) {
