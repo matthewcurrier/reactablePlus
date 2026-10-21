@@ -1,3 +1,12 @@
+# reactablePlus 0.2.0.9003
+
+* A dynamic `config_table_server()` (`source_data`) no longer reverts edits
+  on saved rows when `source_data` changes. Saved data (`data_r`) now seeds
+  only rows the table has not held before; it used to be re-applied to every
+  saved row on each change, so adding a row snapped every unsaved edit on a
+  saved row back to its stored value. A change to `data_r` itself still
+  replaces the rows, as before.
+
 # reactablePlus 0.2.0.9001
 
 * `search_picker` columns gain `show_fill_up` (default `FALSE`), which renders a
