@@ -130,7 +130,10 @@
 #' `range_check_fn` (optional function `(row_key, value) -> logical`
 #' that returns `TRUE` when the row is in range for fill-down), and
 #' optionally `input_name` (character — the Shiny input name the
-#' widget JS sends; defaults to `paste0(column, "_fill_down")`).
+#' widget JS sends; defaults to `paste0(column, "_fill_down")`). To fill
+#' more than one column, pass a list of such specs, one per column. A
+#' search picker sends its fill links to its own spec's `input_name`, so
+#' two picker columns never fill each other.
 #'
 #' ## Gating
 #'
@@ -496,6 +499,36 @@ table_config <- function(
     ),
     class = "table_config"
   )
+}
+
+
+#' The fill-down specs of a config, always as a list of specs.
+#'
+#' `interactions$fill_down` is either one spec (a list with `column`) or a
+#' list of them. Every reader goes through here so the two shapes are told
+#' apart in one place.
+#'
+#' @param config A `table_config` object.
+#' @return A list of specs, each with `input_name` filled in; `list()` when
+#'   there is no fill-down.
+#' @noRd
+.fill_down_specs <- function(config) {
+  fd <- config$interactions$fill_down
+  if (is.null(fd)) {
+    return(list())
+  }
+  specs <- if (!is.null(fd$column)) list(fd) else fd
+  lapply(specs, function(spec) {
+    spec$input_name <- spec$input_name %||% paste0(spec$column, "_fill_down")
+    spec
+  })
+}
+
+
+#' The fill-down spec for one column, or NULL.
+#' @noRd
+.fill_down_spec_for <- function(config, col_id) {
+  Find(function(spec) identical(spec$column, col_id), .fill_down_specs(config))
 }
 
 

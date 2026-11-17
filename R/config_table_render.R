@@ -178,8 +178,7 @@
 #' entities so the inline handler survives reactable's HTML rendering.
 #' @noRd
 .with_fill_link <- function(cell_html, fd, gk, ns) {
-  fd_input_name <- fd$input_name %||% paste0(fd$column, "_fill_down")
-  input_id <- ns(fd_input_name)
+  input_id <- ns(fd$input_name %||% paste0(fd$column, "_fill_down"))
   link <- sprintf(
     paste0(
       "<a href=\"#\" class=\"rp-fill-down\" title=\"Fill value down\" ",
@@ -785,7 +784,14 @@
         empty_hint = opts$empty_hint,
         no_match_hint = opts$no_match_hint,
         show_fill_down = opts$show_fill_down %||% TRUE,
-        show_fill_up = opts$show_fill_up %||% FALSE
+        show_fill_up = opts$show_fill_up %||% FALSE,
+        column = cs$id,
+        # This column's own fill input, so two picker columns never fill
+        # each other. A column with no spec keeps the historical name.
+        fill_input = .fill_down_spec_for(config, cs$id)$input_name %||%
+          "school_fill_down",
+        show_type_pill = opts$show_type_pill %||% TRUE,
+        browse_on_open = opts$browse_on_open %||% FALSE
       ))
       .store_wrap(
         .wrap_cell(
@@ -1066,10 +1072,9 @@
   # Fill-down affordance: when this store-backed column is the fill_down
   # target, append a "fill down" link to each cell (pickers render their
   # own link inside the popover, so they are excluded here).
-  fd <- config$interactions$fill_down
+  fd <- .fill_down_spec_for(config, cs$id)
   if (
     !is.null(fd) &&
-      identical(fd$column, cs$id) &&
       cs$type %in% .STORE_TYPES &&
       !cs$type %in% .PICKER_STORE_TYPES
   ) {

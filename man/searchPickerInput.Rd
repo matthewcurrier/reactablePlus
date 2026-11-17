@@ -18,6 +18,10 @@ searchPickerInput(
   no_match_hint = "No schools match. Check spelling — picking is required.",
   show_fill_down = TRUE,
   show_fill_up = FALSE,
+  column = NULL,
+  fill_input = "school_fill_down",
+  show_type_pill = TRUE,
+  browse_on_open = FALSE,
   ns = "",
   width = "100\%"
 )
@@ -61,6 +65,24 @@ link in the filled state. Default \code{TRUE}.}
 applies the picked value to EARLIER empty rows. Defaults to FALSE so
 existing tables are unchanged. Both directions send the same Shiny input;
 the payload's \code{direction} field distinguishes them.}
+
+\item{column}{Character or NULL. The table column this picker belongs to.
+Sent with every search and fill message, so one table can hold several
+search pickers (a district and a school, say) and tell them apart.}
+
+\item{fill_input}{Character. The Shiny input name the fill links send to,
+under \code{ns}. Default \code{"school_fill_down"}, the name every picker used
+before it was configurable.}
+
+\item{show_type_pill}{Logical. Whether to show the PUBLIC / PRIVATE pill in
+results and in the filled card. Default \code{TRUE}; turn it off for values
+that are not schools.}
+
+\item{browse_on_open}{Logical. When \code{TRUE}, opening the popover asks the
+server for results before anything is typed (an empty query flagged
+\code{browse}), so a search function that already knows enough to answer --
+the schools of a district picked on the same row -- can list them.
+Default \code{FALSE}.}
 
 \item{ns}{Character. The Shiny module namespace prefix for search
 communication. Pass \code{session$ns("")} from within a module. For

@@ -38,6 +38,20 @@
 #'   the payload's `direction` field distinguishes them.
 #' @param show_fill_down Logical. Whether to show the "fill down" action
 #'   link in the filled state. Default `TRUE`.
+#' @param column Character or NULL. The table column this picker belongs to.
+#'   Sent with every search and fill message, so one table can hold several
+#'   search pickers (a district and a school, say) and tell them apart.
+#' @param fill_input Character. The Shiny input name the fill links send to,
+#'   under `ns`. Default `"school_fill_down"`, the name every picker used
+#'   before it was configurable.
+#' @param show_type_pill Logical. Whether to show the PUBLIC / PRIVATE pill in
+#'   results and in the filled card. Default `TRUE`; turn it off for values
+#'   that are not schools.
+#' @param browse_on_open Logical. When `TRUE`, opening the popover asks the
+#'   server for results before anything is typed (an empty query flagged
+#'   `browse`), so a search function that already knows enough to answer --
+#'   the schools of a district picked on the same row -- can list them.
+#'   Default `FALSE`.
 #' @param ns Character. The Shiny module namespace prefix for search
 #'   communication. Pass `session$ns("")` from within a module. For
 #'   top-level apps, leave as `""`.
@@ -80,6 +94,10 @@ searchPickerInput <- function(
   no_match_hint = "No schools match. Check spelling \u2014 picking is required.",
   show_fill_down = TRUE,
   show_fill_up = FALSE,
+  column = NULL,
+  fill_input = "school_fill_down",
+  show_type_pill = TRUE,
+  browse_on_open = FALSE,
   ns = "",
   width = "100%"
 ) {
@@ -104,6 +122,10 @@ searchPickerInput <- function(
     `data-no-match-hint` = no_match_hint,
     `data-show-fill-down` = tolower(as.character(show_fill_down)),
     `data-show-fill-up` = tolower(as.character(show_fill_up)),
+    `data-column` = column,
+    `data-fill-input` = fill_input,
+    `data-show-type-pill` = tolower(as.character(show_type_pill)),
+    `data-browse-on-open` = tolower(as.character(browse_on_open)),
     `data-ns` = ns
   )
 
@@ -147,12 +169,17 @@ updateSearchPickerInput <- function(
 #' @param input The Shiny `input` object.
 #' @param session The Shiny `session` object.
 #' @param search_fn A function that takes `(query, limit)` and returns a
-#'   data frame of matching results.
+#'   data frame of matching results. If it also has an argument named
+#'   `context`, it is passed `list(column, row_key, source_id, browse)` --
+#'   which picker asked, on which row, and whether the query is the empty one
+#'   a `browse_on_open` picker sends -- so one function can answer several
+#'   pickers, or narrow its answer by the rest of the row.
 #' @param limit Maximum number of results to return. Default 25.
 #'
 #' @return Invisible `NULL`. Called for its side effect.
 #' @export
 useTypeaheadSearch <- function(input, session, search_fn, limit = 25L) {
+  takes_context <- "context" %in% names(formals(search_fn))
   shiny::observeEvent(
     input$school_search,
     {
@@ -161,18 +188,32 @@ useTypeaheadSearch <- function(input, session, search_fn, limit = 25L) {
       request_id <- req$request_id
       source_id <- req$source_id
 
-      if (is.null(query) || nchar(query) < 2) {
+      browse <- isTRUE(req$browse)
+      if (is.null(query) || (nchar(query) < 2 && !browse)) {
         return()
       }
 
+      context <- list(
+        column = req$column,
+        row_key = req$row_key,
+        source_id = source_id,
+        browse = browse
+      )
       results <- tryCatch(
-        search_fn(query, limit),
+        if (takes_context) {
+          search_fn(query, limit, context = context)
+        } else {
+          search_fn(query, limit)
+        },
         error = function(e) {
           message("[reactablePlus] search error: ", conditionMessage(e))
           data.frame()
         }
       )
 
+      if (!is.data.frame(results)) {
+        results <- data.frame()
+      }
       results_list <- if (nrow(results) > 0) {
         lapply(seq_len(nrow(results)), function(i) {
           as.list(results[i, , drop = FALSE])

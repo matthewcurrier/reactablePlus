@@ -15,7 +15,11 @@ useSchoolSearch(...)
 \item{session}{The Shiny \code{session} object.}
 
 \item{search_fn}{A function that takes \verb{(query, limit)} and returns a
-data frame of matching results.}
+data frame of matching results. If it also has an argument named
+\code{context}, it is passed \code{list(column, row_key, source_id, browse)} --
+which picker asked, on which row, and whether the query is the empty one
+a \code{browse_on_open} picker sends -- so one function can answer several
+pickers, or narrow its answer by the rest of the row.}
 
 \item{limit}{Maximum number of results to return. Default 25.}
 

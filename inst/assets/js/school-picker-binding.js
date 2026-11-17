@@ -3,12 +3,16 @@
 // Depends on popover-core.js (PopoverCore global).
 //
 // Server communication protocol:
-//   JS → R:  Shiny.setInputValue(ns + "school_search", { query, request_id, source_id })
+//   JS → R:  Shiny.setInputValue(ns + "school_search",
+//              { query, request_id, source_id, column, row_key, browse })
 //   R → JS:  session$sendCustomMessage("sh-search-results", { results, request_id, source_id })
+//            `column` and `row_key` say which picker asked, so one table can
+//            hold several search pickers. `browse` marks the empty query a
+//            data-browse-on-open picker sends when its popover opens.
 //
 // Fill-down action:
-//   JS → R:  Shiny.setInputValue(ns + "school_fill_down",
-//              { from_grade, school, direction }, { priority: "event" })
+//   JS → R:  Shiny.setInputValue(ns + <data-fill-input, default "school_fill_down">,
+//              { from_grade, school, direction, column }, { priority: "event" })
 //            `direction` is "down" or "up". Both buttons send the SAME input:
 //            one observer, one range check, no chance of the two drifting.
 //            Omitting it means "down", which is what pre-fill-up callers do.
@@ -16,7 +20,7 @@
 // Configurable labels (via data attributes):
 //   data-trigger-label, data-popover-title, data-search-placeholder,
 //   data-empty-hint, data-no-match-hint, data-show-fill-down,
-//   data-show-fill-up
+//   data-show-fill-up, data-show-type-pill, data-browse-on-open
 
 (function () {
   "use strict";
@@ -71,7 +75,10 @@
       el.getAttribute("data-no-match-hint") ||
       "No schools match. Check spelling \u2014 picking is required.";
 
-    if (state.query.length < 2) {
+    // A browse (the empty query sent on open) shows its results like any
+    // other; with none, the user is still asked to type.
+    var browsing = state.query.length < 2;
+    if (browsing && !(state.browse && (state.loading || state.results.length))) {
       var hint = document.createElement("div");
       hint.className = "type-empty";
       hint.textContent = emptyHint;
@@ -105,27 +112,26 @@
       var sub = document.createElement("div");
       sub.className = "result-sub";
 
-      var typePill = document.createElement("span");
-      var schoolType = (school.type || school.school_type || "Public").toLowerCase();
-      typePill.className = "type-pill type-" + schoolType;
-      typePill.textContent = schoolType === "private" ? "PRIVATE" : "PUBLIC";
-      sub.appendChild(typePill);
+      if (showTypePill(el)) {
+        sub.appendChild(makeTypePill(school.type || school.school_type));
+      }
 
       sub.appendChild(
         PopoverCore.highlightText(
-          (school.city || "") + ", " + (school.state_abbr || school.state || ""),
+          joinPlace(school.city, school.state_abbr || school.state),
           state.query
         )
       );
 
-      var dot1 = document.createElement("span");
-      dot1.className = "dot";
-      dot1.textContent = "\u00b7";
-      sub.appendChild(dot1);
+      var districtText = school.district_name || school.district || "";
+      if (districtText) {
+        var dot1 = document.createElement("span");
+        dot1.className = "dot";
+        dot1.textContent = "\u00b7";
+        sub.appendChild(dot1);
 
-      sub.appendChild(
-        PopoverCore.highlightText(school.district_name || school.district || "", state.query)
-      );
+        sub.appendChild(PopoverCore.highlightText(districtText, state.query));
+      }
 
       if (showNces) {
         var dot2 = document.createElement("span");
@@ -179,6 +185,7 @@
       city: s.city || "",
       state: s.state_abbr || s.state || "",
       type: s.type || s.school_type || "Public",
+      district_id: s.district_id || null,
       low_grade: s.low_grade || s.low || null,
       high_grade: s.high_grade || s.high || null,
     };
@@ -186,32 +193,50 @@
 
   // ── Debounced search ──────────────────────────────────────────────────
 
-  function triggerSearch(el) {
+  function sendSearch(el, browse) {
     var state = $(el).data("sh-search-state");
     var ns = el.getAttribute("data-ns") || "";
+
+    state.requestId = Date.now() + "-" + Math.random().toString(36).slice(2, 8);
+    state.loading = true;
+    state.browse = browse;
+    renderResults(el);
+
+    Shiny.setInputValue(
+      ns + "school_search",
+      {
+        query: browse ? "" : state.query,
+        request_id: state.requestId,
+        source_id: el.id,
+        column: el.getAttribute("data-column") || null,
+        row_key: el.getAttribute("data-grade-key") || null,
+        browse: browse,
+      },
+      { priority: "event" }
+    );
+  }
+
+  function browseOnOpen(el) {
+    return el.getAttribute("data-browse-on-open") === "true";
+  }
+
+  function triggerSearch(el) {
+    var state = $(el).data("sh-search-state");
 
     clearTimeout(state.debounceTimer);
     state.debounceTimer = setTimeout(function () {
       if (state.query.length < 2) {
+        // Clearing the box goes back to the browse list, when there is one.
+        if (browseOnOpen(el)) {
+          sendSearch(el, true);
+          return;
+        }
         state.results = [];
         state.loading = false;
         renderResults(el);
         return;
       }
-
-      state.requestId = Date.now() + "-" + Math.random().toString(36).slice(2, 8);
-      state.loading = true;
-      renderResults(el);
-
-      Shiny.setInputValue(
-        ns + "school_search",
-        {
-          query: state.query,
-          request_id: state.requestId,
-          source_id: el.id,
-        },
-        { priority: "event" }
-      );
+      sendSearch(el, false);
     }, 200);
   }
 
@@ -260,6 +285,7 @@
         results: [],
         highlightIdx: 0,
         loading: false,
+        browse: false,
         debounceTimer: null,
       });
 
@@ -308,12 +334,10 @@
           var sub = document.createElement("div");
           sub.className = "picked-sub";
 
-          var typePill = document.createElement("span");
-          var schoolType = (v.type || "Public").toLowerCase();
-          typePill.className = "type-pill type-" + schoolType;
-          typePill.textContent = schoolType === "private" ? "PRIVATE" : "PUBLIC";
-          sub.appendChild(typePill);
-          sub.appendChild(document.createTextNode((v.city || "") + ", " + (v.state || "")));
+          if (showTypePill(el)) {
+            sub.appendChild(makeTypePill(v.type));
+          }
+          sub.appendChild(document.createTextNode(joinPlace(v.city, v.state)));
 
           if (v.district) {
             var dot = document.createElement("span");
@@ -352,8 +376,13 @@
             fillBtn.addEventListener("click", function (e) {
               e.stopPropagation();
               Shiny.setInputValue(
-                ns + "school_fill_down",
-                { from_grade: gradeKey, school: v, direction: direction },
+                ns + (el.getAttribute("data-fill-input") || "school_fill_down"),
+                {
+                  from_grade: gradeKey,
+                  school: v,
+                  direction: direction,
+                  column: el.getAttribute("data-column") || null,
+                },
                 { priority: "event" }
               );
             });
@@ -404,6 +433,7 @@
           state.results = [];
           state.highlightIdx = 0;
           state.loading = false;
+          state.browse = false;
 
           // Search input area
           var inputWrap = document.createElement("div");
@@ -466,8 +496,11 @@
           results.className = "type-results";
           body.appendChild(results);
 
-          // Initial empty state
+          // Initial empty state, then the browse list if this picker has one
           renderResults(el);
+          if (browseOnOpen(el)) {
+            sendSearch(el, true);
+          }
 
           // Focus search input
           requestAnimationFrame(function () {
@@ -486,6 +519,7 @@
             state.query = "";
             state.results = [];
             state.loading = false;
+            state.browse = false;
           }
         },
       });
@@ -541,6 +575,23 @@
   );
 
   // ── Helpers ───────────────────────────────────────────────────────────
+
+  function showTypePill(el) {
+    return el.getAttribute("data-show-type-pill") !== "false";
+  }
+
+  function makeTypePill(type) {
+    var pill = document.createElement("span");
+    var schoolType = (type || "Public").toLowerCase();
+    pill.className = "type-pill type-" + schoolType;
+    pill.textContent = schoolType === "private" ? "PRIVATE" : "PUBLIC";
+    return pill;
+  }
+
+  // "City, ST" without a stray comma when either half is missing.
+  function joinPlace(city, state) {
+    return [city, state].filter(function (x) { return !!x; }).join(", ");
+  }
 
   function makeDot() {
     var d = document.createElement("span");

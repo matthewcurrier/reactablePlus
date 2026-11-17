@@ -628,9 +628,10 @@ config_table_server <- function(
     }
 
     # ── Fill-down ────────────────────────────────────────────────────────
-    fd <- config$interactions$fill_down
-    if (!is.null(fd)) {
-      fd_input_name <- fd$input_name %||% paste0(fd$column, "_fill_down")
+    # One observer per fill-down spec, each on its own input, so a table
+    # can fill more than one column (see .fill_down_specs()).
+    wire_fill_down <- function(fd) {
+      fd_input_name <- fd$input_name
       fd_target_cs <- Filter(function(c) c$id == fd$column, config$columns)[[1]]
       fd_target_is_store <- fd_target_cs$type %in% .STORE_TYPES
       shiny::observeEvent(input[[fd_input_name]], {
@@ -789,6 +790,7 @@ config_table_server <- function(
         # reconciliation, which skips cells with unchanged HTML anyway.
       })
     }
+    purrr::walk(.fill_down_specs(config), wire_fill_down)
 
     # ── Mutual exclusion ─────────────────────────────────────────────────
     # (Handled inside .wire_column_observers for the triggering column)
