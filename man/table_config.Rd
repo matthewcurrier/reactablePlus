@@ -178,7 +178,10 @@ string to show in the cleared column's cell).
 \code{range_check_fn} (optional function \verb{(row_key, value) -> logical}
 that returns \code{TRUE} when the row is in range for fill-down), and
 optionally \code{input_name} (character — the Shiny input name the
-widget JS sends; defaults to \code{paste0(column, "_fill_down")}).
+widget JS sends; defaults to \code{paste0(column, "_fill_down")}). To fill
+more than one column, pass a list of such specs, one per column. A
+search picker sends its fill links to its own spec's \code{input_name}, so
+two picker columns never fill each other.
 }
 
 \subsection{Gating}{

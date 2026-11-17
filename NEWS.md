@@ -1,3 +1,22 @@
+# reactablePlus 0.2.0.9004
+
+* One table can hold more than one `search_picker` column. Each picker now
+  sends its column and row key with every search, and its fill links go to
+  its own column's `fill_down` input, so a district picker and a school
+  picker never fill each other.
+  * `interactions$fill_down` takes a list of specs, one per column, as well
+    as the single spec it always took.
+  * A `search_fn` with an argument named `context` is passed
+    `list(column, row_key, source_id, browse)`; a two-argument `search_fn`
+    is called as before.
+  * New `search_picker` options: `show_type_pill = FALSE` drops the
+    PUBLIC / PRIVATE pill for values that are not schools, and
+    `browse_on_open = TRUE` asks the server for results when the popover
+    opens, before anything is typed (an empty query flagged `browse`).
+  * A picked value keeps `district_id` when the result carries one.
+  * The result and card lines no longer show a stray comma when the city or
+    state is missing, or a dot before an empty district.
+
 # reactablePlus 0.2.0.9003
 
 * A dynamic `config_table_server()` (`source_data`) no longer reverts edits
